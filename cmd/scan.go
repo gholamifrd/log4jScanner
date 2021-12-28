@@ -176,6 +176,22 @@ For example: log4jScanner scan --cidr "192.168.0.1/24`,
 		if !disableServer {
 			StartServer(ctx, serverUrl, serverTimeout)
 		}
+
+                // TODO Add command argument
+		// bypassWAF, err := cmd.Flags().GetBool("bypass-waf")
+		// if err != nil {
+		// 	pterm.Error.Println("bypass-waf flag error")
+		// 	err := cmd.Usage()
+		// 	if err != nil {
+		// 		log.Fatal(err)
+		// 	}
+		// 	return
+		// }
+		// if bypassWAF {
+                        // for
+		// 	pterm.Warning.Println("bypassing waf")
+		// }
+
 		ScanCIDR(ctx, cidr, ports, serverUrl, publicIPAllowed)
 	},
 }

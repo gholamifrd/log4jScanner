@@ -1,29 +1,33 @@
 package cmd
 
-import "net/http"
+import (
+        "net/http"
+        "fmt"
+        "strings"
+)
 
 var commonHeaders = []string{
-    "Accept-Charset",
-    "Accept-Datetime",
-    "Accept-Encoding",
-    "Accept-Language",
-    "Cache-Control",
-    "Cookie",
-    "DNT",
+    // "Accept-Charset",
+    // "Accept-Datetime",
+    // "Accept-Encoding",
+    // "Accept-Language",
+    // "Cache-Control",
+    // "Cookie",
+    // "DNT",
     "Forwarded",
     "Forwarded-For",
     "Forwarded-For-Ip",
     "Forwarded-Proto",
     "From",
-    "Max-Forwards",
-    "Origin",
-    "Pragma",
-    "Referer",
-    "TE",
-    "True-Client-IP",
-    "Upgrade",
-    "Via",
-    "Warning",
+    // "Max-Forwards",
+    // "Origin",
+    // "Pragma",
+    // "Referer",
+    // "TE",
+    // "True-Client-IP",
+    // "Upgrade",
+    // "Via",
+    // "Warning",
     "X-ATT-DeviceId",
     "X-Api-Version",
     "X-Att-Deviceid",
@@ -74,6 +78,7 @@ var commonHeaders = []string{
 
 func addCommonHeaders(headers *http.Header, headerValue string) {
     for _, header := range commonHeaders {
-        headers.Add(header,headerValue)
+        // headers.Add(header, headerValue)
+        headers.Add(header,fmt.Sprintf("%s_%s}", strings.TrimSuffix(headerValue, "}"), header))
     }
 }

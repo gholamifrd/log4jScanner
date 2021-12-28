@@ -41,7 +41,7 @@ func (s *Server) ReportIP(vulnerableServiceLocation string) {
 		pterm.Error.Println("Failed to parse vulnerable url: " + vulnerableServiceLocation)
 		log.Fatal("Failed to parse server url" + vulnerableServiceLocation)
 	}
-	msg := fmt.Sprintf("SUCCESS: Remote addr: %s", vulnerableServiceLocation)
+	msg := fmt.Sprintf("Remote addr: %s", vulnerableServiceLocation)
 	log.Info(msg)
 	pterm.Success.Println(msg)
 	if s != nil && s.sChan != nil {
@@ -69,7 +69,8 @@ func (s *Server) handleSearch(w ldap.ResponseWriter, m *ldap.Message) {
 	//pterm.Info.Println("Got LDAP search request: " + r.BaseObject())
 	log.Info("Got LDAP search request: " + r.BaseObject())
 
-	vulnerableLocation := strings.ReplaceAll(string(r.BaseObject()), "_", ":")
+	vulnerableLocationRaw := strings.Replace(string(r.BaseObject()), "_", ":", 1)
+	vulnerableLocation := strings.Replace(string(vulnerableLocationRaw), "_", "/", 1)
 
 	res := ldap.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
 	w.Write(res)
