@@ -2,5 +2,3 @@
 build/
 *.log
 *.csv
-log4jScanner
-release/
