@@ -5,8 +5,8 @@
 
 ## Goals
 
-This tool provides you with the ability to scan internal (only) subnets for vulnerable log4j web services. 
-It will attempt to send a JNDI payload to each discovered web service (via the [methods](#methods_used) outlined below) to a list of common HTTP/S ports. 
+This tool provides you with the ability to scan internal (only) subnets for vulnerable log4j web services.
+It will attempt to send a JNDI payload to each discovered web service (via the [methods](#methods_used) outlined below) to a list of common HTTP/S ports.
 For every response it receives, it will log the responding host IP so we can get a list of the vulnerable servers.
 
 If there is a "SUCCESS", this means that some web service has received the request, was vulnerable to the **log4j** exploit and sent a request to our TCP server.
@@ -39,10 +39,10 @@ The tool does not send any exploits to the vulnerable hosts, and is designed to 
 
 ![example](https://github.com/proferosec/log4jScanner/blob/main/movie.gif)
 
-In this example we run the tool against the `192.168.1.59/29` subnet (which contains a vulnerable server). 
+In this example we run the tool against the `192.168.1.59/29` subnet (which contains a vulnerable server).
 
 The tools does the following:
-1. Open a server on the default address (the local IP at port 5555)
+1. Open a server on the default address (the local IP at port 1389)
 2. POssibly, add the flag `--ports=top100` to adjust the scan to include the top 100 ports
 3. The tool then tries all ports on each of the IP addresses in the subnet. If a remote server responds at one of the ports, the request is sent to it.
 4. If the server is vulnerable, a callback is made to our server (created on step 1) and the IP address of the remote is logged
@@ -53,23 +53,23 @@ The tools does the following:
 
 ## Important Note about Assumptions
 
-* If a callback happened, this means that a vulnerable server exists, the exploit worked and it initiated a callback. 
+* If a callback happened, this means that a vulnerable server exists, the exploit worked and it initiated a callback.
 However.
-* A good rule of thumb, if the callback IP address is not in the subnet scanned, the vulnerable server is behind a NAT 
+* A good rule of thumb, if the callback IP address is not in the subnet scanned, the vulnerable server is behind a NAT
 (e.g. a docker container responds with its own IP address, not the host running the docker)
 * The network traffic created by the tool might be classified as malicious by security products, or cause a lot of noise for monitoring services
 * The server created by the tool assumes that it is open to receive inbound traffic. That means that opening a FW inbound rule on the host running the scan is needed.
 
 ## Basic usage
 
-Download the tool for your specific platform (Windows, Linux or Mac), to run the tool, make sure port 5555 on the host is available (or change it via configuration), 
+Download the tool for your specific platform (Windows, Linux or Mac), to run the tool, make sure port 1389 on the host is available (or change it via configuration),
 and specify the subnet to scan (it is possible to configure a separate server:port combination using the `--server` flag):
 
 ```bash
 log4jScanner.exe scan --cidr 192.168.7.0/24
 ```
 
-This will test the top 10 HTTP\S ports on the hosts in the subnet,  print any vulnerable hosts to the screen, 
+This will test the top 10 HTTP\S ports on the hosts in the subnet,  print any vulnerable hosts to the screen,
 and generate a log + summary CSV in the same location as the binary including all the attempts (both vulnerable and non-vulnerable).
 
 In order to identify which hosts are vulnerable just look up the word `SUCCESS` in the log, you can grep the log for the keywork `SUCCESS` to get just the results.
@@ -119,7 +119,7 @@ Run the docker compose in [here](https://github.com/proferosec/log4jScanner/tree
 This will provide you with a container vulnerable on port 8080 for HTTP and port 8443 for HTTPS.
 
 Alternatively, you can also run this:
-1. Vuln. target: 
+1. Vuln. target:
    1. `docker run --rm --name vulnerable-app -p 8080:8080 ghcr.io/christophetd/log4shell-vulnerable-app`
 2. spin a server for incoming requests
    1. `log4jScanner scanip --cidr DOCKER-SUBNET`

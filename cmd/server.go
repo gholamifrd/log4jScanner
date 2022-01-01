@@ -44,7 +44,7 @@ var serverCmd = &cobra.Command{
 			return
 		}
 		if serverUrl == "" {
-			const port = "5555"
+			const port = "1389"
 			ipaddrs := GetLocalIP()
 			serverUrl = fmt.Sprintf("%s:%s", ipaddrs, port)
 		}
@@ -56,7 +56,7 @@ var serverCmd = &cobra.Command{
 
 func init() {
 	//rootCmd.AddCommand(serverCmd)
-	serverCmd.Flags().String("server", "", "Callback server IP and port (e.g. 192.168.1.100:5555)")
+	serverCmd.Flags().String("server", "", "Callback server IP and port (e.g. 192.168.1.100:1389)")
 }
 
 func ServerStart(serverUrl string) {

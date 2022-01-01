@@ -41,7 +41,7 @@ func (s *Server) ReportIP(vulnerableServiceLocation string) {
 		pterm.Error.Println("Failed to parse vulnerable url: " + vulnerableServiceLocation)
 		log.Fatal("Failed to parse server url" + vulnerableServiceLocation)
 	}
-	msg := fmt.Sprintf("Remote addr: %s", vulnerableServiceLocation)
+        msg := fmt.Sprintf("Reason:LDAP, Remote addr: %s", vulnerableServiceLocation)
 	log.Info(msg)
 	pterm.Success.Println(msg)
 	if s != nil && s.sChan != nil {

@@ -146,7 +146,7 @@ For example: log4jScanner scan --cidr "192.168.0.1/24`,
 			return
 		}
 		if serverUrl == "" {
-			const port = "5555"
+			const port = "1389"
 			ipaddrs := GetLocalIP()
 			serverUrl = fmt.Sprintf("%s:%s", ipaddrs, port)
 		}
@@ -172,10 +172,13 @@ For example: log4jScanner scan --cidr "192.168.0.1/24`,
 			return
 		}
 
+                // UDPServer(serverUrl, serverTimeout)
+                // fmt.Println("udp server started")
 		ctx := context.Background()
 		if !disableServer {
 			StartServer(ctx, serverUrl, serverTimeout)
 		}
+                go UDPServer(serverUrl, serverTimeout)
 
                 // TODO Add command argument
 		// bypassWAF, err := cmd.Flags().GetBool("bypass-waf")
@@ -207,7 +210,7 @@ func init() {
 	scanCmd.Flags().Bool("noserver", false, "Do not use the internal TCP server, this overrides the server flag if present")
 	scanCmd.Flags().Bool("nocolor", false, "remove colors from output")
 	scanCmd.Flags().Bool("allow-public-ips", false, "allowing to scan public IPs")
-	scanCmd.Flags().String("server", "", "Callback server IP and port (e.g. 192.168.1.100:5555)")
+	scanCmd.Flags().String("server", "", "Callback server IP and port (e.g. 192.168.1.100:1389)")
 	scanCmd.Flags().String("ports", "top100",
 		"Ports to scan. By default scans top 10 ports;"+
 			"'top100' will scan the top 100 ports,"+
@@ -331,9 +334,11 @@ func ScanPorts(ip, server string, ports []int, resChan chan string, wg *sync.Wai
 	for _, port := range ports {
 		targetHttps := fmt.Sprintf("http://%s:%v", ip, port)
 		targetHttp := fmt.Sprintf("https://%s:%v", ip, port)
-		wgPorts.Add(2)
-		go ScanIP(targetHttp, server, &wgPorts, resChan)
-		go ScanIP(targetHttps, server, &wgPorts, resChan)
+		wgPorts.Add(4)
+		go ScanIP(targetHttp, server, "LDAP",  &wgPorts, resChan)
+		go ScanIP(targetHttps, server, "LDAP", &wgPorts, resChan)
+		go ScanIP(targetHttp, server, "DNS",  &wgPorts, resChan)
+		go ScanIP(targetHttps, server, "DNS", &wgPorts, resChan)
 	}
 	wgPorts.Wait()
 
