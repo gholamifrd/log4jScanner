@@ -207,8 +207,8 @@ func init() {
 	scanCmd.Flags().Bool("noserver", false, "Do not use the internal TCP server, this overrides the server flag if present")
 	scanCmd.Flags().Bool("nocolor", false, "remove colors from output")
 	scanCmd.Flags().Bool("allow-public-ips", false, "allowing to scan public IPs")
-	scanCmd.Flags().String("ldap-server", "", "Callback server IP and port (e.g. 192.168.1.100:1389)")
-	scanCmd.Flags().String("dns-server", "", "Callback server IP and port (e.g. 192.168.1.100:53)")
+	scanCmd.Flags().String("ldap-server", "", "LDAP Callback server IP and port (e.g. 192.168.1.100:1389)")
+	scanCmd.Flags().String("dns-server", "", "DNS Callback server IP and port (e.g. 192.168.1.100:53)")
 	scanCmd.Flags().String("ports", "top100",
 		"Ports to scan. By default scans top 10 ports;"+
 			"'top100' will scan the top 100 ports,"+
