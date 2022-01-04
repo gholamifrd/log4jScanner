@@ -62,7 +62,6 @@ For example: log4jScanner scan --cidr "192.168.0.1/24`,
 		if publicIPAllowed {
 			pterm.Warning.Println("Scanning public IPs should be done with care, use at your own risk")
 		}
-		// TODO: add cancel context
 		cidr, err := cmd.Flags().GetString("cidr")
 		if err != nil {
 			pterm.Error.Println("CIDR flag error")
@@ -136,19 +135,34 @@ For example: log4jScanner scan --cidr "192.168.0.1/24`,
 			}
 		}
 
-		serverUrl, err := cmd.Flags().GetString("server")
+		serverUrlLDAP, err := cmd.Flags().GetString("ldap-server")
 		if err != nil {
-			pterm.Error.Println("Error in server flag")
+			pterm.Error.Println("Error in LDAP server flag")
 			err := cmd.Usage()
 			if err != nil {
 				log.Fatal(err)
 			}
 			return
 		}
-		if serverUrl == "" {
+		if serverUrlLDAP == "" {
 			const port = "1389"
 			ipaddrs := GetLocalIP()
-			serverUrl = fmt.Sprintf("%s:%s", ipaddrs, port)
+			serverUrlLDAP = fmt.Sprintf("%s:%s", ipaddrs, port)
+		}
+
+		serverUrlDNS, err := cmd.Flags().GetString("dns-server")
+		if err != nil {
+			pterm.Error.Println("Error in DNS server flag")
+			err := cmd.Usage()
+			if err != nil {
+				log.Fatal(err)
+			}
+			return
+		}
+		if serverUrlDNS == "" {
+			const port = "53"
+			ipaddrs := GetLocalIP()
+			serverUrlDNS = fmt.Sprintf("%s:%s", ipaddrs, port)
 		}
 
 		csvPath, err = cmd.Flags().GetString("csv-output")
@@ -172,30 +186,13 @@ For example: log4jScanner scan --cidr "192.168.0.1/24`,
 			return
 		}
 
-                // UDPServer(serverUrl, serverTimeout)
-                // fmt.Println("udp server started")
 		ctx := context.Background()
 		if !disableServer {
-			StartServer(ctx, serverUrl, serverTimeout)
+			StartLDAPServer(ctx, serverUrlLDAP, serverTimeout)
 		}
-                go UDPServer(serverUrl, serverTimeout)
+                go StartDNSServer(serverUrlDNS, serverTimeout)
 
-                // TODO Add command argument
-		// bypassWAF, err := cmd.Flags().GetBool("bypass-waf")
-		// if err != nil {
-		// 	pterm.Error.Println("bypass-waf flag error")
-		// 	err := cmd.Usage()
-		// 	if err != nil {
-		// 		log.Fatal(err)
-		// 	}
-		// 	return
-		// }
-		// if bypassWAF {
-                        // for
-		// 	pterm.Warning.Println("bypassing waf")
-		// }
-
-		ScanCIDR(ctx, cidr, ports, serverUrl, publicIPAllowed)
+		ScanCIDR(ctx, cidr, ports, serverUrlLDAP, serverUrlDNS, publicIPAllowed)
 	},
 }
 
@@ -210,7 +207,8 @@ func init() {
 	scanCmd.Flags().Bool("noserver", false, "Do not use the internal TCP server, this overrides the server flag if present")
 	scanCmd.Flags().Bool("nocolor", false, "remove colors from output")
 	scanCmd.Flags().Bool("allow-public-ips", false, "allowing to scan public IPs")
-	scanCmd.Flags().String("server", "", "Callback server IP and port (e.g. 192.168.1.100:1389)")
+	scanCmd.Flags().String("ldap-server", "", "Callback server IP and port (e.g. 192.168.1.100:1389)")
+	scanCmd.Flags().String("dns-server", "", "Callback server IP and port (e.g. 192.168.1.100:53)")
 	scanCmd.Flags().String("ports", "top100",
 		"Ports to scan. By default scans top 10 ports;"+
 			"'top100' will scan the top 100 ports,"+
@@ -222,7 +220,7 @@ func init() {
 	createPrivateIPBlocks()
 }
 
-func ScanCIDR(ctx context.Context, cidr string, portsFlag string, serverUrl string, allowPublicIPs bool) {
+func ScanCIDR(ctx context.Context, cidr string, portsFlag string, serverUrlLDAP string, serverUrlDNS string,allowPublicIPs bool) {
 	hosts, err := Hosts(cidr, allowPublicIPs)
 	//if err is not nil cidr wasn't parse correctly or ip isn't private
 	if err != nil {
@@ -292,14 +290,34 @@ func ScanCIDR(ctx context.Context, cidr string, portsFlag string, serverUrl stri
 		}
 		wg.Add(1)
 		p.Increment()
-		// TODO: replace with go
-		ScanPorts(i, serverUrl, ports, resChan, &wg)
+		ScanPorts(i, serverUrlLDAP, serverUrlDNS, ports, resChan, &wg)
 	}
 	wg.Wait()
 	if LDAPServer != nil {
 		LDAPServer.Stop()
 	}
 	PrintResults(resChan)
+}
+
+func ScanPorts(ip, serverLDAP string, serverDNS string, ports []int, resChan chan string, wg *sync.WaitGroup) {
+	defer wg.Done()
+	log.Infof("Trying: %s", ip)
+
+	wgPorts := sync.WaitGroup{}
+        targetHttpsVcenter := fmt.Sprintf("https://%s:%v/ui/login", ip, "443")
+        go ScanIP(targetHttpsVcenter, serverLDAP, serverDNS, "LDAP", &wgPorts, resChan)
+        go ScanIP(targetHttpsVcenter, serverDNS, serverDNS, "DNS", &wgPorts, resChan)
+        for _, port := range ports {
+                targetHttp := fmt.Sprintf("https://%s:%v", ip, port)
+                targetHttps := fmt.Sprintf("http://%s:%v", ip, port)
+                wgPorts.Add(6)
+                go ScanIP(targetHttp, serverLDAP, serverDNS, "LDAP",  &wgPorts, resChan)
+                go ScanIP(targetHttps, serverLDAP, serverDNS, "LDAP", &wgPorts, resChan)
+                go ScanIP(targetHttp, serverDNS, serverDNS, "DNS",  &wgPorts, resChan)
+                go ScanIP(targetHttps, serverDNS, serverDNS, "DNS", &wgPorts, resChan)
+        }
+        wgPorts.Wait()
+
 }
 
 func PrintResults(resChan chan string) {
@@ -324,24 +342,6 @@ func PrintResults(resChan chan string) {
 			log.Info(msg)
 		}
 	}
-}
-
-func ScanPorts(ip, server string, ports []int, resChan chan string, wg *sync.WaitGroup) {
-	defer wg.Done()
-	log.Infof("Trying: %s", ip)
-
-	wgPorts := sync.WaitGroup{}
-	for _, port := range ports {
-		targetHttps := fmt.Sprintf("http://%s:%v", ip, port)
-		targetHttp := fmt.Sprintf("https://%s:%v", ip, port)
-		wgPorts.Add(4)
-		go ScanIP(targetHttp, server, "LDAP",  &wgPorts, resChan)
-		go ScanIP(targetHttps, server, "LDAP", &wgPorts, resChan)
-		go ScanIP(targetHttp, server, "DNS",  &wgPorts, resChan)
-		go ScanIP(targetHttps, server, "DNS", &wgPorts, resChan)
-	}
-	wgPorts.Wait()
-
 }
 
 func Hosts(cidr string, allowPublicIPs bool) ([]string, error) {

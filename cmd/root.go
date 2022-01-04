@@ -19,6 +19,8 @@ package cmd
 import (
 	"fmt"
 	"os"
+        "os/user"
+        "runtime"
 
 	"github.com/pterm/pterm"
 	log "github.com/sirupsen/logrus"
@@ -49,7 +51,7 @@ const logDateFormat = "2006-01-02_150405"
 var rootCmd = &cobra.Command{
 	Use:   "log4jScanner",
 	Short: "Root command",
-	Long: `log4jScanner tool will scan a subnet for web servers and will try to send the JNDI exploit to each one. 
+	Long: `log4jScanner tool will scan a subnet for web servers and will try to send the JNDI exploit to each one.
 			For every response it receives, it will log the sender IP so we can get a list of the vulnerable servers.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
@@ -64,12 +66,43 @@ var rootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+        checkPermission()
 	cobra.CheckErr(rootCmd.Execute())
+}
+
+func checkPermission(){
+        switch runtime.GOOS {
+        case "windows":
+                if !isAdmin() {
+                        pterm.Error.Println("Please Run This Script With Admin Privileges")
+                        os.Exit(1)
+                }
+        case "linux":
+                if !isRoot() {
+                        pterm.Error.Println("Please Run This Script With Sudo")
+                        os.Exit(1)
+                }
+        }
+}
+
+func isAdmin() bool {
+    _, err := os.Open("\\\\.\\PHYSICALDRIVE0")
+    if err != nil {
+        return false
+    }
+    return true
+}
+
+func isRoot() bool {
+        currentUser, err := user.Current()
+        if err != nil {
+        log.Fatalf("[isRoot] Unable to get current user: %s", err)
+    }
+    return currentUser.Username == "root"
 }
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	cobra.OnInitialize(utils.PrintHeader)
 	//initLog need to be run after header is been printed for output order
 	cobra.OnInitialize(initLog)
 

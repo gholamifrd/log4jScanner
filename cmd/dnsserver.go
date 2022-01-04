@@ -10,8 +10,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func UDPServer(serverUrl string, serverTimeout int) {
-	listenUrl, err := url.Parse("//" + serverUrl)
+func StartDNSServer(serverUrlDNS string, serverTimeout int) {
+	listenUrl, err := url.Parse("//" + serverUrlDNS)
 	if err != nil {
 		pterm.Error.Println("Failed to parse server url")
 		log.Fatal("Failed to parse server url")
@@ -23,7 +23,7 @@ func UDPServer(serverUrl string, serverTimeout int) {
 	// listen to incoming udp packets
         listenPort := ":" + listenUrl.Port()
 
-	pterm.Info.Println("Starting Fake DNS server on UDP port", listenUrl.Host)
+	pterm.Info.Println("Starting Fake DNS server on UDP port ", listenUrl.Host)
         pterm.Warning.Printf("Make Sure that UDP port %s is available\n", listenUrl.Port())
 	log.Info("Starting Fake DNS server on UDP Port", listenUrl.Host)
 	pc, err := net.ListenPacket("udp", listenPort)
@@ -39,14 +39,13 @@ func UDPServer(serverUrl string, serverTimeout int) {
                 if err != nil {
                         return
                 }
-                go ReportVulnUDPIP(addr)
+                go ReportVulnDNSIP(addr)
         }
-
 }
 
-func ReportVulnUDPIP(addr net.Addr) {
+func ReportVulnDNSIP(addr net.Addr) {
         vulnIP, _, _ := net.SplitHostPort(addr.String())
-        msg := fmt.Sprintf("Reason:DNS, Remote addr: %s", vulnIP)
-	log.Info(msg)
-	pterm.Success.Println(msg)
+        msg := fmt.Sprintf("Reason: DNS, Remote addr: %s", vulnIP)
+        log.Info(msg)
+        pterm.Success.Println(msg)
 }

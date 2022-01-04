@@ -76,9 +76,16 @@ var commonHeaders = []string{
     "X-XSRF-TOKEN",
 }
 
-func addCommonHeaders(headers *http.Header, headerValue string) {
+func addCommonHeadersLDAP(headers *http.Header, headerValue string) {
     for _, header := range commonHeaders {
         // headers.Add(header, headerValue)
         headers.Add(header,fmt.Sprintf("%s_%s}", strings.TrimSuffix(headerValue, "}"), header))
+    }
+}
+
+func addCommonHeadersDNS(headers *http.Header, headerValue string) {
+    for _, header := range commonHeaders {
+        // headers.Add(header, headerValue)
+        headers.Add(header, headerValue)
     }
 }

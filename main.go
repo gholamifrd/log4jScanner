@@ -29,14 +29,11 @@ var (
 )
 
 func main() {
-    utils.SetVersion(Version, BuildTime)
     //utils.PrintHeader()
 
     utils.InitLogger()
     defer utils.Logger.Close()
     log.WithFields(log.Fields{"buildTime": BuildTime}).Debugf("Version: ", Version)
 
-    //cmd.SetVersionTemplate("test")
-    //cmd.SetHelpFunc()
     cmd.Execute()
 }

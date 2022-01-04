@@ -15,7 +15,15 @@ import (
 
 var LDAPServer *Server
 
-func StartServer(ctx context.Context, serverUrl string, serverTimeout int) {
+type Server struct {
+	server  *ldap.Server
+	sChan   chan string
+	// succChan   chan string
+        // hit     chan bool
+	timeout time.Duration
+}
+
+func StartLDAPServer(ctx context.Context, serverUrl string, serverTimeout int) {
 	pterm.Info.Println("Server URL: " + serverUrl)
 	log.Info("Server URL: " + serverUrl)
 	listenUrl, err := url.Parse("//" + serverUrl)
@@ -30,31 +38,27 @@ func StartServer(ctx context.Context, serverUrl string, serverTimeout int) {
 	log.Info("Starting LDAP server on ", listenUrl.Host)
 	LDAPServer = NewServer()
 	LDAPServer.sChan = make(chan string, 10000)
+	// LDAPServer.succChan = make(chan string, 10000)
+	// LDAPServer.hit = make(chan bool)
 	LDAPServer.timeout = time.Duration(serverTimeout) * time.Second
 
 	go LDAPServer.server.ListenAndServe(listenUrl.Host)
 }
 
-func (s *Server) ReportIP(vulnerableServiceLocation string) {
-	vulnUrl, err := url.Parse("//" + vulnerableServiceLocation)
-	if err != nil {
-		pterm.Error.Println("Failed to parse vulnerable url: " + vulnerableServiceLocation)
-		log.Fatal("Failed to parse server url" + vulnerableServiceLocation)
+func NewServer() *Server {
+	s := &Server{
+		server: ldap.NewServer(),
 	}
-        msg := fmt.Sprintf("Reason:LDAP, Remote addr: %s", vulnerableServiceLocation)
-	log.Info(msg)
-	pterm.Success.Println(msg)
-	if s != nil && s.sChan != nil {
-		resMsg := fmt.Sprintf("vulnerable,%s,%s,", vulnUrl.Hostname(), vulnUrl.Port())
-		updateCsvRecords(resMsg)
-		s.sChan <- resMsg
-	}
-}
 
-type Server struct {
-	server  *ldap.Server
-	sChan   chan string
-	timeout time.Duration
+	ldap.Logger = log.StandardLogger()
+
+	routes := ldap.NewRouteMux()
+	routes.Bind(s.handleBind)
+	routes.Search(s.handleSearch)
+
+	s.server.Handle(routes)
+
+	return s
 }
 
 func (s *Server) handleBind(w ldap.ResponseWriter, m *ldap.Message) {
@@ -80,20 +84,22 @@ func (s *Server) handleSearch(w ldap.ResponseWriter, m *ldap.Message) {
 	return
 }
 
-func NewServer() *Server {
-	s := &Server{
-		server: ldap.NewServer(),
+func (s *Server) ReportIP(vulnerableServiceLocation string) {
+	vulnUrl, err := url.Parse("//" + vulnerableServiceLocation)
+	if err != nil {
+		pterm.Error.Println("Failed to parse vulnerable url: " + vulnerableServiceLocation)
+		log.Fatal("Failed to parse server url" + vulnerableServiceLocation)
 	}
-
-	ldap.Logger = log.StandardLogger()
-
-	routes := ldap.NewRouteMux()
-	routes.Bind(s.handleBind)
-	routes.Search(s.handleSearch)
-
-	s.server.Handle(routes)
-
-	return s
+        msg := fmt.Sprintf("Reason: LDAP, Remote addr: %s", vulnerableServiceLocation)
+	log.Info(msg)
+	pterm.Success.Println(msg)
+        // s.hit <- true
+        // s.succChan <- msg
+	if s != nil && s.sChan != nil {
+		resMsg := fmt.Sprintf("vulnerable,%s,%s,", vulnUrl.Hostname(), vulnUrl.Port())
+		updateCsvRecords(resMsg)
+		s.sChan <- resMsg
+	}
 }
 
 func (s *Server) Stop() {
