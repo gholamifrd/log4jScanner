@@ -304,17 +304,19 @@ func ScanPorts(ip, serverLDAP string, serverDNS string, ports []int, resChan cha
 	log.Infof("Trying: %s", ip)
 
 	wgPorts := sync.WaitGroup{}
-        targetHttpsVcenter := fmt.Sprintf("https://%s:%v/ui/login", ip, "443")
-        go ScanIP(targetHttpsVcenter, serverLDAP, serverDNS, "LDAP", &wgPorts, resChan)
-        go ScanIP(targetHttpsVcenter, serverDNS, serverDNS, "DNS", &wgPorts, resChan)
         for _, port := range ports {
                 targetHttp := fmt.Sprintf("https://%s:%v", ip, port)
                 targetHttps := fmt.Sprintf("http://%s:%v", ip, port)
+                targetHttpsVcenter := fmt.Sprintf("https://%s:%s/ui/login", ip, "443")
                 wgPorts.Add(6)
                 go ScanIP(targetHttp, serverLDAP, serverDNS, "LDAP",  &wgPorts, resChan)
                 go ScanIP(targetHttps, serverLDAP, serverDNS, "LDAP", &wgPorts, resChan)
-                go ScanIP(targetHttp, serverDNS, serverDNS, "DNS",  &wgPorts, resChan)
-                go ScanIP(targetHttps, serverDNS, serverDNS, "DNS", &wgPorts, resChan)
+
+                go ScanIP(targetHttp, serverLDAP, serverDNS, "DNS",  &wgPorts, resChan)
+                go ScanIP(targetHttps, serverLDAP, serverDNS, "DNS", &wgPorts, resChan)
+
+                go ScanIP(targetHttpsVcenter, serverLDAP, serverDNS, "LDAP", &wgPorts, resChan)
+                go ScanIP(targetHttpsVcenter, serverLDAP, serverDNS, "DNS", &wgPorts, resChan)
         }
         wgPorts.Wait()
 
