@@ -207,8 +207,8 @@ func init() {
 	scanCmd.Flags().Bool("noserver", false, "Do not use the internal TCP server, this overrides the server flag if present")
 	scanCmd.Flags().Bool("nocolor", false, "remove colors from output")
 	scanCmd.Flags().Bool("allow-public-ips", false, "allowing to scan public IPs")
-	scanCmd.Flags().String("ldap-server", "", "LDAP Callback server IP and port (e.g. 192.168.1.100:1389)")
-	scanCmd.Flags().String("dns-server", "", "DNS Callback server IP and port (e.g. 192.168.1.100:53)")
+	scanCmd.Flags().String("ldap-server", "", "Callback server IP and port (e.g. 192.168.1.100:1389)")
+	scanCmd.Flags().String("dns-server", "", "Callback server IP and port (e.g. 192.168.1.100:53)")
 	scanCmd.Flags().String("ports", "top100",
 		"Ports to scan. By default scans top 10 ports;"+
 			"'top100' will scan the top 100 ports,"+
@@ -305,16 +305,14 @@ func ScanPorts(ip, serverLDAP string, serverDNS string, ports []int, resChan cha
 
 	wgPorts := sync.WaitGroup{}
         for _, port := range ports {
+                targetHttpsVcenter := fmt.Sprintf("https://%s:%v/ui/login", ip, "443")
                 targetHttp := fmt.Sprintf("https://%s:%v", ip, port)
                 targetHttps := fmt.Sprintf("http://%s:%v", ip, port)
-                targetHttpsVcenter := fmt.Sprintf("https://%s:%s/ui/login", ip, "443")
                 wgPorts.Add(6)
                 go ScanIP(targetHttp, serverLDAP, serverDNS, "LDAP",  &wgPorts, resChan)
                 go ScanIP(targetHttps, serverLDAP, serverDNS, "LDAP", &wgPorts, resChan)
-
                 go ScanIP(targetHttp, serverLDAP, serverDNS, "DNS",  &wgPorts, resChan)
                 go ScanIP(targetHttps, serverLDAP, serverDNS, "DNS", &wgPorts, resChan)
-
                 go ScanIP(targetHttpsVcenter, serverLDAP, serverDNS, "LDAP", &wgPorts, resChan)
                 go ScanIP(targetHttpsVcenter, serverLDAP, serverDNS, "DNS", &wgPorts, resChan)
         }

