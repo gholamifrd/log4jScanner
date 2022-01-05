@@ -77,9 +77,16 @@ func (s *Server) handleSearch(w ldap.ResponseWriter, m *ldap.Message) {
 
 	vulnerableLocationRaw := strings.Replace(string(r.BaseObject()), "_", ":", 1)
 	vulnerableLocation := strings.Replace(string(vulnerableLocationRaw), "_", "/", 1)
-        vulnerableIP := strings.Split(vulnerableLocation, "/")[0]
-        vulnerableParameter := strings.Split(vulnerableLocation, "/")[1]
+        vulnerableLocationList := strings.Split(vulnerableLocation, "/")
+        // fmt.Println(vulnerableLocation)
+        vulnerableIP := vulnerableLocationList[0]
+        var vulnerableParameter string
+        if len(vulnerableLocationList) == 2 {
+                vulnerableParameter = vulnerableLocationList[1]
+        } else {
+                vulnerableParameter = ""
 
+        }
 	res := ldap.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
 	w.Write(res)
 
@@ -94,14 +101,14 @@ func (s *Server) ReportIP(vulnerableServiceIP string, vulnerableServiceParameter
 		pterm.Error.Println("Failed to parse vulnerable url: " + vulnerableServiceIP)
 		log.Fatal("Failed to parse server url" + vulnerableServiceIP)
 	}
-        msg := fmt.Sprintf("Vulnerable IP: %s Vulnerable Paramete: %s (LDAP CallBack)", vulnerableServiceIP, vulnerableServiceParameter)
+        msg := fmt.Sprintf("Vulnerable IP: %s Vulnerable Parameter: %s (LDAP CallBack)", vulnerableServiceIP, vulnerableServiceParameter)
 	log.Info(msg)
-        if !LDAPResultsMap[msg] {
-                pterm.Success.Println(msg)
-                LDAPResultsMap[msg] = true
-                // return
+        if len(vulnerableServiceParameter) != 0 {
+                if !LDAPResultsMap[vulnerableServiceIP] {
+                        pterm.Success.Println(msg)
+                        LDAPResultsMap[vulnerableServiceIP] = true
+                }
         }
-        // pterm.Success.Println(msg)
 	if s != nil && s.sChan != nil {
 		resMsg := fmt.Sprintf("vulnerable,%s,%s,", vulnUrl.Hostname(), vulnUrl.Port())
 		updateCsvRecords(resMsg)
