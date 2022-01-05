@@ -4,7 +4,8 @@ import (
 	"net"
 	"net/url"
         "fmt"
-        "time"
+        // "time"
+        "os"
 
 	"github.com/pterm/pterm"
 	log "github.com/sirupsen/logrus"
@@ -28,13 +29,14 @@ func StartDNSServer(serverUrlDNS string, serverTimeout int) {
 	log.Info("Starting Fake DNS server on UDP Port", listenUrl.Host)
 	pc, err := net.ListenPacket("udp", listenPort)
 	if err != nil {
-		log.Fatal(err)
+		pterm.Error.Println(err)
+                os.Exit(1)
 	}
 	defer pc.Close()
-        timeout := time.Duration(serverTimeout) * time.Second
+        // timeout := time.Duration(serverTimeout) * time.Second
 	for {
                 buf := make([]byte, 1024)
-                pc.SetDeadline(time.Now().Add(timeout))
+                // pc.SetDeadline(time.Now().Add(timeout))
                 _, addr, err := pc.ReadFrom(buf)
                 if err != nil {
                         return
