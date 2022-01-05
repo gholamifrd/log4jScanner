@@ -14,6 +14,7 @@ import (
 )
 
 var LDAPServer *Server
+var LDAPResultsMap = make(map[string]bool)
 
 type Server struct {
 	server  *ldap.Server
@@ -35,6 +36,7 @@ func StartLDAPServer(ctx context.Context, serverUrl string, serverTimeout int) {
 	listenUrl.Host = "0.0.0.0:" + listenUrl.Port()
 
 	pterm.Info.Println("Starting internal LDAP server on", listenUrl.Host)
+        pterm.Warning.Printf("Make Sure that TCP port %s is available\n", listenUrl.Port())
 	log.Info("Starting LDAP server on ", listenUrl.Host)
 	LDAPServer = NewServer()
 	LDAPServer.sChan = make(chan string, 10000)
@@ -75,26 +77,31 @@ func (s *Server) handleSearch(w ldap.ResponseWriter, m *ldap.Message) {
 
 	vulnerableLocationRaw := strings.Replace(string(r.BaseObject()), "_", ":", 1)
 	vulnerableLocation := strings.Replace(string(vulnerableLocationRaw), "_", "/", 1)
+        vulnerableIP := strings.Split(vulnerableLocation, "/")[0]
+        vulnerableParameter := strings.Split(vulnerableLocation, "/")[1]
 
 	res := ldap.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
 	w.Write(res)
 
-	s.ReportIP(vulnerableLocation)
+	s.ReportIP(vulnerableIP, vulnerableParameter)
 
 	return
 }
 
-func (s *Server) ReportIP(vulnerableServiceLocation string) {
-	vulnUrl, err := url.Parse("//" + vulnerableServiceLocation)
+func (s *Server) ReportIP(vulnerableServiceIP string, vulnerableServiceParameter string) {
+	vulnUrl, err := url.Parse("//" + vulnerableServiceIP)
 	if err != nil {
-		pterm.Error.Println("Failed to parse vulnerable url: " + vulnerableServiceLocation)
-		log.Fatal("Failed to parse server url" + vulnerableServiceLocation)
+		pterm.Error.Println("Failed to parse vulnerable url: " + vulnerableServiceIP)
+		log.Fatal("Failed to parse server url" + vulnerableServiceIP)
 	}
-        msg := fmt.Sprintf("Reason: LDAP, Remote addr: %s", vulnerableServiceLocation)
+        msg := fmt.Sprintf("Vulnerable IP: %s Vulnerable Paramete: %s (LDAP CallBack)", vulnerableServiceIP, vulnerableServiceParameter)
 	log.Info(msg)
-	pterm.Success.Println(msg)
-        // s.hit <- true
-        // s.succChan <- msg
+        if !LDAPResultsMap[msg] {
+                pterm.Success.Println(msg)
+                LDAPResultsMap[msg] = true
+                // return
+        }
+        // pterm.Success.Println(msg)
 	if s != nil && s.sChan != nil {
 		resMsg := fmt.Sprintf("vulnerable,%s,%s,", vulnUrl.Hostname(), vulnUrl.Port())
 		updateCsvRecords(resMsg)

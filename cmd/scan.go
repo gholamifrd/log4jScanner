@@ -80,6 +80,7 @@ For example: log4jScanner scan --cidr "192.168.0.1/24`,
 			}
 			return
 		}
+		// }
 		CIDRName(cidr)
 
 		ports, err := cmd.Flags().GetString("ports")
@@ -185,13 +186,12 @@ For example: log4jScanner scan --cidr "192.168.0.1/24`,
 			}
 			return
 		}
+                go StartDNSServer(serverUrlDNS, serverTimeout)
 
 		ctx := context.Background()
 		if !disableServer {
 			StartLDAPServer(ctx, serverUrlLDAP, serverTimeout)
 		}
-                go StartDNSServer(serverUrlDNS, serverTimeout)
-
 		ScanCIDR(ctx, cidr, ports, serverUrlLDAP, serverUrlDNS, publicIPAllowed)
 	},
 }
@@ -204,12 +204,14 @@ func init() {
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
 	scanCmd.Flags().String("cidr", "", "IP subnet to scan in CIDR notation (e.g. 192.168.1.0/24)")
+	// scanCmd.Flags().String("list", "", "TEXT file containing target IPs to scan, Each IP in a separate line")
+	// scanCmd.Flags().String("ip", "", "Single IP to scan")
 	scanCmd.Flags().Bool("noserver", false, "Do not use the internal TCP server, this overrides the server flag if present")
 	scanCmd.Flags().Bool("nocolor", false, "remove colors from output")
 	scanCmd.Flags().Bool("allow-public-ips", false, "allowing to scan public IPs")
 	scanCmd.Flags().String("ldap-server", "", "Callback server IP and port (e.g. 192.168.1.100:1389)")
 	scanCmd.Flags().String("dns-server", "", "Callback server IP and port (e.g. 192.168.1.100:53)")
-	scanCmd.Flags().String("ports", "top10",
+	scanCmd.Flags().String("ports", "top100",
 		"Ports to scan. By default scans top 10 ports;"+
 			"'top100' will scan the top 100 ports,"+
 			"to scan a single insert a port number (e.g. 9000),"+
@@ -327,7 +329,7 @@ func PrintResults(resChan chan string) {
 	for res := range resChan {
 		fullRes := strings.Split(res, ",")
 		msg := fmt.Sprintf("Summary: %s:%s ==> %s", fullRes[1], fullRes[2], fullRes[3])
-		pterm.Info.Println(msg)
+		// pterm.Info.Println(msg)
 		log.Info(msg)
 	}
 
@@ -338,7 +340,7 @@ func PrintResults(resChan chan string) {
 		for suc := range LDAPServer.sChan {
 			fullSuc := strings.Split(suc, ",")
 			msg := fmt.Sprintf("Summary: Callback from %s:%s", fullSuc[1], fullSuc[2])
-			pterm.Info.Println(msg)
+			// pterm.Info.Println(msg)
 			log.Info(msg)
 		}
 	}

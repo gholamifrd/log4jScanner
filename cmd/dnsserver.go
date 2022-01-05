@@ -11,6 +11,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var DNSResultsMap = make(map[string]bool)
+
 func StartDNSServer(serverUrlDNS string, serverTimeout int) {
 	listenUrl, err := url.Parse("//" + serverUrlDNS)
 	if err != nil {
@@ -26,6 +28,7 @@ func StartDNSServer(serverUrlDNS string, serverTimeout int) {
 
 	pterm.Info.Println("Starting Fake DNS server on UDP port ", listenUrl.Host)
         pterm.Warning.Printf("Make Sure that UDP port %s is available\n", listenUrl.Port())
+        fmt.Println()
 	log.Info("Starting Fake DNS server on UDP Port", listenUrl.Host)
 	pc, err := net.ListenPacket("udp", listenPort)
 	if err != nil {
@@ -47,7 +50,11 @@ func StartDNSServer(serverUrlDNS string, serverTimeout int) {
 
 func ReportVulnDNSIP(addr net.Addr) {
         vulnIP, _, _ := net.SplitHostPort(addr.String())
-        msg := fmt.Sprintf("Reason: DNS, Remote addr: %s", vulnIP)
+        msg := fmt.Sprintf("Vulnerable IP: %s  (DNS CallBack)", vulnIP)
         log.Info(msg)
+        if DNSResultsMap[msg] {
+                return
+        }
+        DNSResultsMap[msg] = true
         pterm.Success.Println(msg)
 }
