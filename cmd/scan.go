@@ -209,7 +209,7 @@ func init() {
 	scanCmd.Flags().Bool("allow-public-ips", false, "allowing to scan public IPs")
 	scanCmd.Flags().String("ldap-server", "", "Callback server IP and port (e.g. 192.168.1.100:1389)")
 	scanCmd.Flags().String("dns-server", "", "Callback server IP and port (e.g. 192.168.1.100:53)")
-	scanCmd.Flags().String("ports", "top100",
+	scanCmd.Flags().String("ports", "top10",
 		"Ports to scan. By default scans top 10 ports;"+
 			"'top100' will scan the top 100 ports,"+
 			"to scan a single insert a port number (e.g. 9000),"+
