@@ -23,6 +23,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+        "os"
+        "bufio"
 
 	"github.com/pterm/pterm"
 	log "github.com/sirupsen/logrus"
@@ -50,18 +52,7 @@ For example: log4jScanner scan --cidr "192.168.0.1/24`,
 			}
 			return
 		}
-		publicIPAllowed, err := cmd.Flags().GetBool("allow-public-ips")
-		if err != nil {
-			pterm.Error.Println("allow-public-ip flag error")
-			err := cmd.Usage()
-			if err != nil {
-				log.Fatal(err)
-			}
-			return
-		}
-		if publicIPAllowed {
-			pterm.Warning.Println("Scanning public IPs should be done with care, use at your own risk")
-		}
+                publicIPAllowed := true
 		cidr, err := cmd.Flags().GetString("cidr")
 		if err != nil {
 			pterm.Error.Println("CIDR flag error")
@@ -71,17 +62,69 @@ For example: log4jScanner scan --cidr "192.168.0.1/24`,
 			}
 			return
 		}
-		if cidr == "" {
-			log.Error("CIDR flag missing")
-			pterm.Error.Println("CIDR flag missing")
+		iplist, err := cmd.Flags().GetString("list")
+		if err != nil {
+			pterm.Error.Println("LIST flag error")
 			err := cmd.Usage()
 			if err != nil {
 				log.Fatal(err)
 			}
 			return
 		}
-		// }
-		CIDRName(cidr)
+		singleip, err := cmd.Flags().GetString("ip")
+		if err != nil {
+			pterm.Error.Println("IP flag error")
+			err := cmd.Usage()
+			if err != nil {
+				log.Fatal(err)
+			}
+			return
+		}
+		if len(cidr) == 0 && len(iplist) == 0 && len(singleip) == 0 {
+                        log.Error("You should specify one of these flags: CIDR,LIST,IP")
+			pterm.Error.Println("You should specify one of these flags: CIDR,LIST,IP")
+			err := cmd.Usage()
+			if err != nil {
+				log.Fatal(err)
+			}
+			return
+		}
+		if len(cidr) != 0 && len(iplist) != 0 && len(singleip) != 0 {
+                        log.Error("You should specify Only one of these flags: CIDR,LIST,IP")
+			pterm.Error.Println("You should specify Only one of these flags: CIDR,LIST,IP")
+			err := cmd.Usage()
+			if err != nil {
+				log.Fatal(err)
+			}
+			return
+		}
+		if len(cidr) != 0 && len(iplist) != 0 {
+                        log.Error("You should specify Only one of these flags: CIDR,LIST,IP")
+			pterm.Error.Println("You should specify Only one of these flags: CIDR,LIST,IP")
+			err := cmd.Usage()
+			if err != nil {
+				log.Fatal(err)
+			}
+			return
+		}
+		if len(cidr) != 0 && len(singleip) != 0 {
+                        log.Error("You should specify Only one of these flags: CIDR,LIST,IP")
+			pterm.Error.Println("You should specify Only one of these flags: CIDR,LIST,IP")
+			err := cmd.Usage()
+			if err != nil {
+				log.Fatal(err)
+			}
+			return
+		}
+		if  len(iplist) != 0 && len(singleip) != 0 {
+                        log.Error("You should specify Only one of these flags: CIDR,LIST,IP")
+			pterm.Error.Println("You should specify Only one of these flags: CIDR,LIST,IP")
+			err := cmd.Usage()
+			if err != nil {
+				log.Fatal(err)
+			}
+			return
+		}
 
 		ports, err := cmd.Flags().GetString("ports")
 		if err != nil {
@@ -186,13 +229,31 @@ For example: log4jScanner scan --cidr "192.168.0.1/24`,
 			}
 			return
 		}
-                go StartDNSServer(serverUrlDNS, serverTimeout)
 
 		ctx := context.Background()
 		if !disableServer {
 			StartLDAPServer(ctx, serverUrlLDAP, serverTimeout)
 		}
-		ScanCIDR(ctx, cidr, ports, serverUrlLDAP, serverUrlDNS, publicIPAllowed)
+                var iptype string
+
+                if len(cidr) != 0 {
+                        CIDRName(cidr)
+                        iptype = "cidr"
+                        go StartDNSServer(serverUrlDNS, serverTimeout)
+                        ScanAll(ctx, cidr, ports, serverUrlLDAP, serverUrlDNS, publicIPAllowed, iptype)
+                }
+                if len(iplist) != 0 {
+                        iptype = "iplist"
+                        go StartDNSServer(serverUrlDNS, serverTimeout)
+                        ScanAll(ctx, iplist, ports, serverUrlLDAP, serverUrlDNS, publicIPAllowed, iptype)
+                }
+                if len(singleip) != 0 {
+                        iptype = "singleip"
+                        go StartDNSServer(serverUrlDNS, serverTimeout)
+                        ScanAll(ctx, singleip, ports, serverUrlLDAP, serverUrlDNS, publicIPAllowed, iptype)
+                }
+
+
 	},
 }
 
@@ -204,11 +265,11 @@ func init() {
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
 	scanCmd.Flags().String("cidr", "", "IP subnet to scan in CIDR notation (e.g. 192.168.1.0/24)")
-	// scanCmd.Flags().String("list", "", "TEXT file containing target IPs to scan, Each IP in a separate line")
-	// scanCmd.Flags().String("ip", "", "Single IP to scan")
+	scanCmd.Flags().String("list", "", "TEXT file containing target IPs to scan, Each IP in a separate line")
+	scanCmd.Flags().String("ip", "", "Single IP to scan (e.g 192.168.1.200)")
 	scanCmd.Flags().Bool("noserver", false, "Do not use the internal TCP server, this overrides the server flag if present")
 	scanCmd.Flags().Bool("nocolor", false, "remove colors from output")
-	scanCmd.Flags().Bool("allow-public-ips", false, "allowing to scan public IPs")
+	scanCmd.Flags().Bool("allow-public-ips", true, "allowing to scan public IPs")
 	scanCmd.Flags().String("ldap-server", "", "Callback server IP and port (e.g. 192.168.1.100:1389)")
 	scanCmd.Flags().String("dns-server", "", "Callback server IP and port (e.g. 192.168.1.100:53)")
 	scanCmd.Flags().String("ports", "top100",
@@ -222,24 +283,49 @@ func init() {
 	createPrivateIPBlocks()
 }
 
-func ScanCIDR(ctx context.Context, cidr string, portsFlag string, serverUrlLDAP string, serverUrlDNS string,allowPublicIPs bool) {
-	hosts, err := Hosts(cidr, allowPublicIPs)
-	//if err is not nil cidr wasn't parse correctly or ip isn't private
-	if err != nil {
-		pterm.Error.Println("Failed to get hosts, what:", err)
-		//an error occurred and program should shut down, close the TCP server
-		if LDAPServer != nil {
-			LDAPServer.Stop()
-		}
-		return
-	}
+func ScanAll(ctx context.Context, ips string, portsFlag string, serverUrlLDAP string, serverUrlDNS string,allowPublicIPs bool, iptype string) {
+        var hosts []string
+        switch iptype {
+        case "cidr":
+                hosts, err := Hosts(ips, allowPublicIPs)
+                //if err is not nil cidr wasn't parse correctly or ip isn't private
+                if err != nil {
+                        pterm.Error.Println("Failed to get hosts, what:", err)
+                        //an error occurred and program should shut down, close the TCP server
+                        if LDAPServer != nil {
+                                LDAPServer.Stop()
+                        }
+                        return
+                }
+                pterm.Info.Printf("Scanning %d addresses in %s\n", len(hosts), ips)
+        case "iplist":
+                ipfile, err := os.Open(ips)
+                if err != nil {
+                        pterm.Error.Println("Failed to Open IP List :", err)
+                        return
+                }
+                defer ipfile.Close()
 
-	pterm.Info.Printf("Scanning %d addresses in %s\n", len(hosts), cidr)
+                scanner := bufio.NewScanner(ipfile)
+                for scanner.Scan() {
+                        hosts = append(hosts, scanner.Text())
+                }
+
+                if err := scanner.Err(); err != nil {
+                        log.Fatal(err)
+                        pterm.Error.Println("Failed to Read IP List:", err)
+                }
+                pterm.Info.Printf("Scanning %d addresses in IP list\n", len(hosts))
+        case "singleip":
+                hosts = append(hosts, ips)
+                pterm.Info.Printf("Scanning  address %v\n", hosts[0])
+        }
+
 	// Scan for open ports, if there is an open port, add it to the chan
 
 	// if there are no IPs in the hosts lists, close the TCP server
 	if len(hosts) == 0 {
-		pterm.Error.Println("No IP addresses in CIDR")
+		pterm.Error.Println("No IP addresses Found")
 		if LDAPServer != nil {
 			LDAPServer.Stop()
 		}
