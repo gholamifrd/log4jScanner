@@ -22,7 +22,7 @@ func ScanIP(hostUrl string, serverUrlLDAP string, serverUrlDNS string, reqType s
         client := &http.Client{
                 Timeout: 2 * timeoutInterval * time.Second,
                 Transport: &http.Transport{
-                        TLSHandshakeTimeout:   10 * timeoutInterval * time.Second,
+                        TLSHandshakeTimeout:   timeoutInterval * time.Second,
                         ResponseHeaderTimeout: timeoutInterval * time.Second,
                         ExpectContinueTimeout: timeoutInterval * time.Second,
                         TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
