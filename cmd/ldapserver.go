@@ -80,7 +80,7 @@ func (s *Server) handleSearch(w ldap.ResponseWriter, m *ldap.Message) {
                 if strings.Contains(vulnerableLocationList[1], "VCenter") {
                         vulnerableParameterList := strings.Split(vulnerableLocationList[1], "_")
                         vulnerableParameter = vulnerableParameterList[1]
-                        vulnerableService = "VCenter"
+                        vulnerableService = "(VCenter)"
                 } else {
                         vulnerableParameter = vulnerableLocationList[1]
                         vulnerableService = ""
@@ -103,7 +103,7 @@ func (s *Server) ReportIP(vulnerableServiceIP string, vulnerableServiceParameter
 		pterm.Error.Println("Failed to parse vulnerable url: " + vulnerableServiceIP)
 		log.Fatal("Failed to parse server url" + vulnerableServiceIP)
 	}
-        msg := fmt.Sprintf("Vulnerable IP: %s Vulnerable Parameter: %s (LDAP CallBack) (%s)", vulnerableServiceIP, vulnerableServiceParameter, vulnerableServiceService)
+        msg := fmt.Sprintf("Vulnerable IP: %s Vulnerable Parameter: %s (LDAP CallBack)%s", vulnerableServiceIP, vulnerableServiceParameter, vulnerableServiceService)
 	log.Info(msg)
         if len(vulnerableServiceParameter) != 0 {
                 if !LDAPResultsMap[vulnerableServiceIP] {
