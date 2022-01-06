@@ -19,8 +19,6 @@ var LDAPResultsMap = make(map[string]bool)
 type Server struct {
 	server  *ldap.Server
 	sChan   chan string
-	// succChan   chan string
-        // hit     chan bool
 	timeout time.Duration
 }
 
@@ -40,8 +38,6 @@ func StartLDAPServer(ctx context.Context, serverUrl string, serverTimeout int) {
 	log.Info("Starting LDAP server on ", listenUrl.Host)
 	LDAPServer = NewServer()
 	LDAPServer.sChan = make(chan string, 10000)
-	// LDAPServer.succChan = make(chan string, 10000)
-	// LDAPServer.hit = make(chan bool)
 	LDAPServer.timeout = time.Duration(serverTimeout) * time.Second
 
 	go LDAPServer.server.ListenAndServe(listenUrl.Host)
@@ -72,17 +68,23 @@ func (s *Server) handleBind(w ldap.ResponseWriter, m *ldap.Message) {
 func (s *Server) handleSearch(w ldap.ResponseWriter, m *ldap.Message) {
 	r := m.GetSearchRequest()
 
-	//pterm.Info.Println("Got LDAP search request: " + r.BaseObject())
 	log.Info("Got LDAP search request: " + r.BaseObject())
 
-	vulnerableLocationRaw := strings.Replace(string(r.BaseObject()), "_", ":", 1)
+        vulnerableLocationRaw := strings.Replace(string(r.BaseObject()), "_", ":", 1)
 	vulnerableLocation := strings.Replace(string(vulnerableLocationRaw), "_", "/", 1)
         vulnerableLocationList := strings.Split(vulnerableLocation, "/")
-        // fmt.Println(vulnerableLocation)
         vulnerableIP := vulnerableLocationList[0]
         var vulnerableParameter string
+        var vulnerableService string
         if len(vulnerableLocationList) == 2 {
-                vulnerableParameter = vulnerableLocationList[1]
+                if strings.Contains(vulnerableLocationList[1], "VCenter") {
+                        vulnerableParameterList := strings.Split(vulnerableLocationList[1], "_")
+                        vulnerableParameter = vulnerableParameterList[1]
+                        vulnerableService = "VCenter"
+                } else {
+                        vulnerableParameter = vulnerableLocationList[1]
+                        vulnerableService = ""
+                }
         } else {
                 vulnerableParameter = ""
 
@@ -90,18 +92,18 @@ func (s *Server) handleSearch(w ldap.ResponseWriter, m *ldap.Message) {
 	res := ldap.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
 	w.Write(res)
 
-	s.ReportIP(vulnerableIP, vulnerableParameter)
+	s.ReportIP(vulnerableIP, vulnerableParameter, vulnerableService)
 
 	return
 }
 
-func (s *Server) ReportIP(vulnerableServiceIP string, vulnerableServiceParameter string) {
+func (s *Server) ReportIP(vulnerableServiceIP string, vulnerableServiceParameter string, vulnerableServiceService string) {
 	vulnUrl, err := url.Parse("//" + vulnerableServiceIP)
 	if err != nil {
 		pterm.Error.Println("Failed to parse vulnerable url: " + vulnerableServiceIP)
 		log.Fatal("Failed to parse server url" + vulnerableServiceIP)
 	}
-        msg := fmt.Sprintf("Vulnerable IP: %s Vulnerable Parameter: %s (LDAP CallBack)", vulnerableServiceIP, vulnerableServiceParameter)
+        msg := fmt.Sprintf("Vulnerable IP: %s Vulnerable Parameter: %s (LDAP CallBack) (%s)", vulnerableServiceIP, vulnerableServiceParameter, vulnerableServiceService)
 	log.Info(msg)
         if len(vulnerableServiceParameter) != 0 {
                 if !LDAPResultsMap[vulnerableServiceIP] {

