@@ -109,9 +109,11 @@ func (s *Server) ReportIP(callback string) {
 	}
         msg := fmt.Sprintf("Vuln Service: %s:%s  Vuln Param: %s (LDAP CallBack)%s", traceIP, tracePort, traceParam, traceService)
 	log.Info(msg)
-        if !LDAPResultsMap[callback] {
-                LDAPResultsMap[callback] = true
-                pterm.Success.Println(msg)
+        if contains(targetIPs, traceIP) {
+                if !LDAPResultsMap[callback] {
+                        LDAPResultsMap[callback] = true
+                        pterm.Success.Println(msg)
+                }
         }
 	if s != nil && s.sChan != nil {
 		resMsg := fmt.Sprintf("vulnerable,%s,%s,", vulnUrl.Hostname(), vulnUrl.Port())

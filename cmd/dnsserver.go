@@ -28,7 +28,6 @@ func StartDNSServer(serverUrlDNS string, serverTimeout int) {
 
 	pterm.Info.Println("Starting Fake DNS server on UDP port ", listenUrl.Host)
         pterm.Warning.Printf("Make Sure that UDP port %s is available\n", listenUrl.Port())
-        fmt.Println()
 	log.Info("Starting Fake DNS server on UDP Port ", listenUrl.Host)
 	pc, err := net.ListenPacket("udp", listenPort)
 	if err != nil {
@@ -73,8 +72,20 @@ func ReportVulnDNSIP(addr net.Addr, callback string) {
         }
         msg := fmt.Sprintf("Vuln Service: %s:%s  Vuln Param: %s (DNS CallBack)%s", traceIP, tracePort, traceParam, traceService)
         log.Info(msg)
-        if !DNSResultsMap[callback] {
-                DNSResultsMap[callback] = true
-                pterm.Success.Println(msg)
+        if contains(targetIPs, traceIP) {
+                if !DNSResultsMap[callback] {
+                        DNSResultsMap[callback] = true
+                        pterm.Success.Println(msg)
+                }
         }
+}
+
+func contains(slice []string, item string) bool {
+    set := make(map[string]struct{}, len(slice))
+    for _, s := range slice {
+        set[s] = struct{}{}
+    }
+
+    _, ok := set[item]
+    return ok
 }

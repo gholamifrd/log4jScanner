@@ -31,6 +31,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var targetIPs []string
 // scanCmd represents the scan command
 var scanCmd = &cobra.Command{
 	Use:   "scan",
@@ -322,7 +323,7 @@ func ScanAll(ctx context.Context, ips string, portsFlag string, serverUrlLDAP st
                 pterm.Info.Printf("Scanning  address %v\n", hosts[0])
         }
 
-	// Scan for open ports, if there is an open port, add it to the chan
+        targetIPs = hosts
 
 	// if there are no IPs in the hosts lists, close the TCP server
 	if len(hosts) == 0 {
