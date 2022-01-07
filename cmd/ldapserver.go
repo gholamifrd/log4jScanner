@@ -67,49 +67,51 @@ func (s *Server) handleBind(w ldap.ResponseWriter, m *ldap.Message) {
 
 func (s *Server) handleSearch(w ldap.ResponseWriter, m *ldap.Message) {
 	r := m.GetSearchRequest()
-
 	log.Info("Got LDAP search request: " + r.BaseObject())
 
-        vulnerableLocationRaw := strings.Replace(string(r.BaseObject()), "_", ":", 1)
-	vulnerableLocation := strings.Replace(string(vulnerableLocationRaw), "_", "/", 1)
-        vulnerableLocationList := strings.Split(vulnerableLocation, "/")
-        vulnerableIP := vulnerableLocationList[0]
-        var vulnerableParameter string
-        var vulnerableService string
-        if len(vulnerableLocationList) == 2 {
-                if strings.Contains(vulnerableLocationList[1], "VCenter") {
-                        vulnerableParameterList := strings.Split(vulnerableLocationList[1], "_")
-                        vulnerableParameter = vulnerableParameterList[1]
-                        vulnerableService = "(VCenter)"
-                } else {
-                        vulnerableParameter = vulnerableLocationList[1]
-                        vulnerableService = ""
-                }
-        } else {
-                vulnerableParameter = ""
-
-        }
+        callback := string(r.BaseObject())
 	res := ldap.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
 	w.Write(res)
 
-	s.ReportIP(vulnerableIP, vulnerableParameter, vulnerableService)
+	s.ReportIP(callback)
 
 	return
 }
 
-func (s *Server) ReportIP(vulnerableServiceIP string, vulnerableServiceParameter string, vulnerableServiceService string) {
-	vulnUrl, err := url.Parse("//" + vulnerableServiceIP)
-	if err != nil {
-		pterm.Error.Println("Failed to parse vulnerable url: " + vulnerableServiceIP)
-		log.Fatal("Failed to parse server url" + vulnerableServiceIP)
-	}
-        msg := fmt.Sprintf("Vulnerable IP: %s Vulnerable Parameter: %s (LDAP CallBack)%s", vulnerableServiceIP, vulnerableServiceParameter, vulnerableServiceService)
-	log.Info(msg)
-        if len(vulnerableServiceParameter) != 0 {
-                if !LDAPResultsMap[vulnerableServiceIP] {
-                        pterm.Success.Println(msg)
-                        LDAPResultsMap[vulnerableServiceIP] = true
+func (s *Server) ReportIP(callback string) {
+        var traceIP string
+        var tracePort string
+        var traceParam string
+        var traceService string
+        traceList := strings.Split(callback, "_")
+        if len(traceList) > 1 {
+                traceIP = strings.Join(traceList[:4], ".")
+                tracePort = traceList[4]
+                if strings.Contains(callback, "VCenter") {
+                        traceService = "(VCenter)"
+                        traceParam = traceList[6]
+                } else {
+                        traceService = ""
+                        traceParam = traceList[5]
                 }
+        } else {
+                traceIP = "?"
+                tracePort = "?"
+                traceParam = "?"
+                traceService = ""
+        }
+
+        vulnerableService:= fmt.Sprintf("//%s:%s", traceIP, tracePort)
+        vulnUrl, err := url.Parse(vulnerableService)
+	if err != nil {
+		pterm.Error.Println("Failed to parse vulnerable url: " + vulnerableService)
+		log.Fatal("Failed to parse server url" + vulnerableService)
+	}
+        msg := fmt.Sprintf("Vuln Service: %s:%s  Vuln Param: %s (LDAP CallBack)%s", traceIP, tracePort, traceParam, traceService)
+	log.Info(msg)
+        if !LDAPResultsMap[callback] {
+                LDAPResultsMap[callback] = true
+                pterm.Success.Println(msg)
         }
 	if s != nil && s.sChan != nil {
 		resMsg := fmt.Sprintf("vulnerable,%s,%s,", vulnUrl.Hostname(), vulnUrl.Port())

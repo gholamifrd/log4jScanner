@@ -272,7 +272,7 @@ func init() {
 	scanCmd.Flags().Bool("allow-public-ips", true, "allowing to scan public IPs")
 	scanCmd.Flags().String("ldap-server", "", "Callback server IP and port (e.g. 192.168.1.100:1389)")
 	scanCmd.Flags().String("dns-server", "", "Callback server IP and port (e.g. 192.168.1.100:53)")
-	scanCmd.Flags().String("ports", "top100",
+	scanCmd.Flags().String("ports", "top10",
 		"Ports to scan. By default scans top 10 ports;"+
 			"'top100' will scan the top 100 ports,"+
 			"to scan a single insert a port number (e.g. 9000),"+
@@ -287,7 +287,7 @@ func ScanAll(ctx context.Context, ips string, portsFlag string, serverUrlLDAP st
         var hosts []string
         switch iptype {
         case "cidr":
-                hosts, err := Hosts(ips, allowPublicIPs)
+                cidrHosts, err := Hosts(ips, allowPublicIPs)
                 //if err is not nil cidr wasn't parse correctly or ip isn't private
                 if err != nil {
                         pterm.Error.Println("Failed to get hosts, what:", err)
@@ -297,6 +297,7 @@ func ScanAll(ctx context.Context, ips string, portsFlag string, serverUrlLDAP st
                         }
                         return
                 }
+                hosts = cidrHosts
                 pterm.Info.Printf("Scanning %d addresses in %s\n", len(hosts), ips)
         case "iplist":
                 ipfile, err := os.Open(ips)

