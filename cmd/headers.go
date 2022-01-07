@@ -81,9 +81,3 @@ func addCommonHeaders(headers *http.Header, headerValue string) {
                 headers.Add(header,fmt.Sprintf("%s_%s}", strings.TrimSuffix(headerValue, "}"), header))
         }
 }
-
-// func addCommonHeadersDNS(headers *http.Header, headerValue string) {
-//     for _, header := range commonHeaders {
-//         headers.Add(header, headerValue)
-//     }
-// }
