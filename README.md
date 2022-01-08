@@ -13,3 +13,7 @@ go build -o log4jScanner main.go
 ```
 
 or just get the pre-compiled binaries from repo
+
+## Persian Manual
+
+[Log4jScanner_Manual.pdf](https://github.com/gholamifrd/log4jScanner/blob/main/Log4jScanner_Manual.pdf)
