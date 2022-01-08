@@ -112,6 +112,10 @@ func (s *Server) ReportIP(callback string) {
         if contains(targetIPs, traceIP) {
                 if !LDAPResultsMap[callback] {
                         LDAPResultsMap[callback] = true
+                        pterm.Success.Prefix = pterm.Prefix{
+                        Text:  "VULNERABLE",
+                        Style: pterm.NewStyle(pterm.BgRed, pterm.FgBlack),
+                        }
                         pterm.Success.Println(msg)
                 }
         }

@@ -75,6 +75,10 @@ func ReportVulnDNSIP(addr net.Addr, callback string) {
         if contains(targetIPs, traceIP) {
                 if !DNSResultsMap[callback] {
                         DNSResultsMap[callback] = true
+                        pterm.Success.Prefix = pterm.Prefix{
+                        Text:  "VULNERABLE",
+                        Style: pterm.NewStyle(pterm.BgRed, pterm.FgBlack),
+                        }
                         pterm.Success.Println(msg)
                 }
         }
