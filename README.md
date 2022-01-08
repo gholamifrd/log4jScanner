@@ -12,7 +12,8 @@ go get ./...
 go build -o log4jScanner main.go
 ```
 
-or just get the pre-compiled binaries from Releases
+or just get the pre-compiled binaries from
+[Releases](https://github.com/gholamifrd/log4jScanner/releases)
 
 ## Persian Manual
 
