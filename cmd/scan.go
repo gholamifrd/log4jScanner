@@ -180,6 +180,18 @@ For example: log4jScanner scan --cidr "192.168.0.1/24`,
 			}
 		}
 
+		serverIP, err := cmd.Flags().GetString("server-ip")
+		if err != nil {
+			pterm.Error.Println("Error in server ip flag")
+			err := cmd.Usage()
+			if err != nil {
+				log.Fatal(err)
+			}
+			return
+		}
+                if serverIP == "" {
+                        serverIP = GetLocalIP()
+                }
 		serverUrlLDAP, err := cmd.Flags().GetString("ldap-server")
 		if err != nil {
 			pterm.Error.Println("Error in LDAP server flag")
@@ -191,8 +203,13 @@ For example: log4jScanner scan --cidr "192.168.0.1/24`,
 		}
 		if serverUrlLDAP == "" {
 			const port = "1389"
-			ipaddrs := GetLocalIP()
-			serverUrlLDAP = fmt.Sprintf("%s:%s", ipaddrs, port)
+                        if serverIP != "" {
+                                ipaddrs := serverIP
+                                serverUrlLDAP = fmt.Sprintf("%s:%s", ipaddrs, port)
+                        } else {
+                                ipaddrs := GetLocalIP()
+                                serverUrlLDAP = fmt.Sprintf("%s:%s", ipaddrs, port)
+                        }
 		}
 
 		serverUrlDNS, err := cmd.Flags().GetString("dns-server")
@@ -206,8 +223,13 @@ For example: log4jScanner scan --cidr "192.168.0.1/24`,
 		}
 		if serverUrlDNS == "" {
 			const port = "53"
-			ipaddrs := GetLocalIP()
-			serverUrlDNS = fmt.Sprintf("%s:%s", ipaddrs, port)
+                        if serverIP != "" {
+                                ipaddrs := serverIP
+                                serverUrlDNS = fmt.Sprintf("%s:%s", ipaddrs, port)
+                        } else {
+                                ipaddrs := GetLocalIP()
+                                serverUrlDNS = fmt.Sprintf("%s:%s", ipaddrs, port)
+                        }
 		}
 
 		csvPath, err = cmd.Flags().GetString("csv-output")
@@ -271,6 +293,7 @@ func init() {
 	scanCmd.Flags().Bool("noserver", false, "Do not use the internal TCP server, this overrides the server flag if present")
 	scanCmd.Flags().Bool("nocolor", false, "remove colors from output")
 	scanCmd.Flags().Bool("allow-public-ips", true, "allowing to scan public IPs")
+	scanCmd.Flags().String("server-ip", "", "Callback server IP (e.g. 192.168.1.100)")
 	scanCmd.Flags().String("ldap-server", "", "Callback server IP and port (e.g. 192.168.1.100:1389)")
 	scanCmd.Flags().String("dns-server", "", "Callback server IP and port (e.g. 192.168.1.100:53)")
 	scanCmd.Flags().String("ports", "top10",
