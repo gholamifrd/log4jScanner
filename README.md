@@ -5,6 +5,11 @@ with added features
 
 ## Installation
 
-`git clone https://github.com/gholamifrd/log4jScanner cd log4jScanner go get ./... go build -o log4jScanner main.go`
+```
+git clone https://github.com/gholamifrd/log4jScanner
+cd log4jScanner
+go get ./...
+go build -o log4jScanner main.go
+```
 
 or just get the pre-compiled binaries from repo
