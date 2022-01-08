@@ -12,7 +12,7 @@ go get ./...
 go build -o log4jScanner main.go
 ```
 
-or just get the pre-compiled binaries from repo
+or just get the pre-compiled binaries from Releases
 
 ## Persian Manual
 
